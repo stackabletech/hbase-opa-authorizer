@@ -1,0 +1,143 @@
+# Derived from hbase-operator/tests/templates/kuttl/opa/12-rego-rules.txt.j2
+# with $NAMESPACE replaced by "test-ns". Regenerate with:
+#   tail -n +10 <path>/12-rego-rules.txt.j2 | sed 's/^    //' | sed 's/\$NAMESPACE/test-ns/g'
+#
+package hbase
+
+default allow := false
+default matches_identity(identity) := false
+
+# table is null if the request is for namespace permissions, but as parameters cannot be
+# undefined, we have to set it to something specific:
+checked_table_name := input.table.qualifierAsString if {input.table.qualifierAsString}
+checked_table_name := "__undefined__" if {not input.table.qualifierAsString}
+
+allow if {
+    some acl in acls
+    matches_identity(acl.identity)
+    matches_resource(input.namespace, checked_table_name, acl.resource)
+    action_sufficient_for_operation(acl.action, input.action)
+    matches_operation(acl, input.operation)
+    matches_families(acl, input.families)
+}
+
+# Identity mentions the (long) userName explicitly
+matches_identity(identity) if {
+    identity in {
+        concat("", ["user:", input.callerUgi.userName])
+    }
+}
+
+# Identity regex matches the (long) userName
+matches_identity(identity) if {
+    match_entire(identity, concat("", ["userRegex:", input.callerUgi.userName]))
+}
+
+# Identity mentions group the user is part of (by looking up using the (long) userName)
+matches_identity(identity) if {
+    some group in groups_for_user[input.callerUgi.userName]
+    identity == concat("", ["group:", group])
+}
+
+# Allow all resources
+matches_resource(namespace, table, resource) if {
+    resource == "hbase:"
+}
+
+# Allow all namespaces
+matches_resource(namespace, table, resource) if {
+    resource == "hbase:namespace:"
+}
+
+# Resource mentions the namespace explicitly
+matches_resource(namespace, table, resource) if {
+    resource == concat(":", ["hbase:namespace", namespace])
+}
+
+# Resource mentions the namespaced table explicitly
+matches_resource(namespace, table, resource) if {
+    resource == concat("", ["hbase:table:", namespace, "/", table])
+}
+
+match_entire(pattern, value) if {
+    # Add the anchors ^ and $
+    pattern_with_anchors := concat("", ["^", pattern, "$"])
+
+    regex.match(pattern_with_anchors, value)
+}
+
+action_sufficient_for_operation(action, operation) if {
+    action_hierarchy[action][_] == action_for_operation[operation]
+}
+
+action_hierarchy := {
+    "full": ["full", "rw", "ro"],
+    "rw": ["rw", "ro"],
+    "ro": ["ro"],
+}
+
+action_for_operation := {
+    "ADMIN": "full",
+    "CREATE": "full",
+    "WRITE": "rw",
+    "READ": "ro",
+    "EXEC":  "full",
+}
+
+# If the ACL does not restrict operations, all operation types are permitted.
+matches_operation(acl, _) if {
+    not acl.operations
+}
+
+# If the ACL restricts operations, the requested OpType must be in the permitted set.
+matches_operation(acl, operation) if {
+    acl.operations
+    operation in acl.operations
+}
+
+# If the ACL does not restrict families, all column families are permitted.
+matches_families(acl, _) if {
+    not acl.families
+}
+
+# If the ACL restricts families, every family present in the request must be allowed.
+# An empty families map (namespace-scoped or unfiltered scan) always passes.
+matches_families(acl, families) if {
+    acl.families
+    count({f | f := object.keys(families)[_]; not f in acl.families}) == 0
+}
+
+groups_for_user := {
+    "hbase/hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL": ["admins"],
+    "admin/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL": ["admins"],
+    "developer/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL": ["developers"],
+    "public/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL": ["public"],
+    "readonlyuser/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL": [],
+}
+
+acls := [
+    {
+        "identity": "group:admins",
+        "action": "full",
+        "resource": "hbase:",
+    },
+    {
+        "identity": "group:developers",
+        "action": "full",
+        "resource": "hbase:namespace:developers",
+    },
+    {
+        "identity": "group:public",
+        "action": "full",
+        "resource": "hbase:namespace:public",
+    },
+    {
+        "identity": "user:readonlyuser/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL",
+        "action": "ro",
+        "resource": "hbase:namespace:",
+        # Restrict to read-only operation types; exercises matches_operation non-null branch.
+        "operations": ["exists", "get", "scan", "none"],
+        # Restrict to known column families; exercises matches_families non-null branch.
+        "families": ["cf1"],
+    },
+]
