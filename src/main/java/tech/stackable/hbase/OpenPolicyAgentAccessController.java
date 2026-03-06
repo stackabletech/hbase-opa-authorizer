@@ -21,6 +21,8 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.BalanceRequest;
+import org.apache.hadoop.hbase.client.CheckAndMutate;
+import org.apache.hadoop.hbase.client.CheckAndMutateResult;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
@@ -30,6 +32,7 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.SnapshotDescription;
 import org.apache.hadoop.hbase.client.TableDescriptor;
@@ -726,6 +729,39 @@ public class OpenPolicyAgentAccessController
         Action.READ,
         Action.WRITE);
     return result;
+  }
+
+  @Override
+  public CheckAndMutateResult preCheckAndMutate(
+      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      CheckAndMutate checkAndMutate,
+      CheckAndMutateResult result)
+      throws IOException {
+    if (checkAndMutate.getAction() instanceof RowMutations) {
+      User user = getActiveUser(ctx);
+      TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+      LOG.trace("preCheckAndMutate (RowMutations): user [{}] on table [{}]", user, tableName);
+      opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.ROW_MUTATIONS);
+      return result;
+    }
+    return RegionObserver.super.preCheckAndMutate(ctx, checkAndMutate, result);
+  }
+
+  @Override
+  public CheckAndMutateResult preCheckAndMutateAfterRowLock(
+      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      CheckAndMutate checkAndMutate,
+      CheckAndMutateResult result)
+      throws IOException {
+    if (checkAndMutate.getAction() instanceof RowMutations) {
+      User user = getActiveUser(ctx);
+      TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+      LOG.trace(
+          "preCheckAndMutateAfterRowLock (RowMutations): user [{}] on table [{}]", user, tableName);
+      opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.ROW_MUTATIONS);
+      return result;
+    }
+    return RegionObserver.super.preCheckAndMutateAfterRowLock(ctx, checkAndMutate, result);
   }
 
   @Override

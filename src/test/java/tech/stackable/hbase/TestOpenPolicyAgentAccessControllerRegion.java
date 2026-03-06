@@ -11,11 +11,14 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.apache.hadoop.hbase.CompareOperator;
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.CheckAndMutate;
+import org.apache.hadoop.hbase.client.CheckAndMutateResult;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.ObserverContextImpl;
@@ -305,6 +308,38 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
         () -> {
           getRegionController()
               .preCheckAndDeleteAfterRowLock(regionCtx(), TEST_ROW, (Filter) null, delete, false);
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCheckAndMutateWithRowMutations() throws Exception {
+    RowMutations rowMutations = new RowMutations(TEST_ROW);
+    rowMutations.add(new Put(TEST_ROW));
+    CheckAndMutate checkAndMutate =
+        CheckAndMutate.newBuilder(TEST_ROW)
+            .ifNotExists(TEST_FAMILY, TEST_QUALIFIER)
+            .build(rowMutations);
+    CheckAndMutateResult result = new CheckAndMutateResult(true, null);
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController().preCheckAndMutate(regionCtx(), checkAndMutate, result);
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCheckAndMutateAfterRowLockWithRowMutations() throws Exception {
+    RowMutations rowMutations = new RowMutations(TEST_ROW);
+    rowMutations.add(new Put(TEST_ROW));
+    CheckAndMutate checkAndMutate =
+        CheckAndMutate.newBuilder(TEST_ROW)
+            .ifNotExists(TEST_FAMILY, TEST_QUALIFIER)
+            .build(rowMutations);
+    CheckAndMutateResult result = new CheckAndMutateResult(true, null);
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController().preCheckAndMutateAfterRowLock(regionCtx(), checkAndMutate, result);
           return null;
         });
   }
