@@ -249,6 +249,7 @@ public class OpenPolicyAgentAccessController
       throws IOException {
     User user = getActiveUser(c);
     TableName tableName = c.getEnvironment().getRegionInfo().getTable();
+    LOG.trace("preGetOp: user [{}] on table [{}] with get [{}]", user, tableName, get);
     // All users need read access to hbase:meta table.
     if (TableName.META_TABLE_NAME.equals(tableName)) {
       return;
@@ -1106,7 +1107,7 @@ public class OpenPolicyAgentAccessController
       Service service,
       String methodName,
       Message request) {
-    LOG.debug("preEndpointInvocation not implemented! {}/{}", methodName, request);
+    LOG.trace("preEndpointInvocation not implemented! {}/{}", methodName, request);
     return request;
   }
 
@@ -1117,7 +1118,7 @@ public class OpenPolicyAgentAccessController
       String methodName,
       Message request,
       Message.Builder responseBuilder) {
-    LOG.debug("postEndpointInvocation not implemented! {}/{}", methodName, request);
+    LOG.trace("postEndpointInvocation not implemented! {}/{}", methodName, request);
   }
 
   @Override
@@ -1127,13 +1128,13 @@ public class OpenPolicyAgentAccessController
       TableName tableName,
       RegionInfo[] regionInfos,
       String description) {
-    LOG.debug("preRequestLock not implemented! {}/{}", tableName, regionInfos);
+    LOG.trace("preRequestLock not implemented! {}/{}", tableName, regionInfos);
   }
 
   @Override
   public void preLockHeartbeat(
       ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName, String description) {
-    LOG.debug("preLockHeartbeat not implemented! {}/{}", tableName, description);
+    LOG.trace("preLockHeartbeat not implemented! {}/{}", tableName, description);
   }
 
   /*********************************** Global admin operations ***********************************/
