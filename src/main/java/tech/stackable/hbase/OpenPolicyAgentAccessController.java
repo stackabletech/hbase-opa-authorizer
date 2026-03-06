@@ -152,7 +152,8 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> c, NamespaceDescriptor ns) throws IOException {
     User user = getActiveUser(c);
     LOG.debug("preCreateNamespace: user [{}]", user);
-    opaAclChecker.checkPermissionInfo(user, ns.getName(), Action.ADMIN);
+    opaAclChecker.checkPermissionInfo(
+        user, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, Action.ADMIN);
   }
 
   @Override
@@ -160,7 +161,8 @@ public class OpenPolicyAgentAccessController
       throws IOException {
     User user = getActiveUser(c);
     LOG.debug("preDeleteNamespace: user [{}]", user);
-    opaAclChecker.checkPermissionInfo(user, namespace, Action.ADMIN);
+    opaAclChecker.checkPermissionInfo(
+        user, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, Action.ADMIN);
   }
 
   @Override
@@ -168,7 +170,8 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> c, NamespaceDescriptor ns) throws IOException {
     User user = getActiveUser(c);
     LOG.debug("preModifyNamespace: user [{}]", user);
-    opaAclChecker.checkPermissionInfo(user, ns.getName(), Action.ADMIN);
+    opaAclChecker.checkPermissionInfo(
+        user, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, Action.ADMIN);
   }
 
   @Override
@@ -946,7 +949,8 @@ public class OpenPolicyAgentAccessController
       final String namespace,
       final GlobalQuotaSettings quotas)
       throws IOException {
-    requirePermission(ctx, namespace, "setUserNamespaceQuota", Action.ADMIN);
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "setUserNamespaceQuota", Action.ADMIN);
   }
 
   @Override
@@ -964,7 +968,8 @@ public class OpenPolicyAgentAccessController
       final String namespace,
       final GlobalQuotaSettings quotas)
       throws IOException {
-    requirePermission(ctx, namespace, "setNamespaceQuota", Action.ADMIN);
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "setNamespaceQuota", Action.ADMIN);
   }
 
   @Override
