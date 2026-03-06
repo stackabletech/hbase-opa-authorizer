@@ -6,12 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Captures WireMock OPA requests during unit tests and writes them as fixture JSON files for
@@ -35,15 +34,15 @@ public class OpaFixtureWriter {
   private static final Path DENIED_DIR = FIXTURES_BASE.resolve("denied");
 
   /** All captured (requestBody, responseBody) pairs across all test classes in this JVM run. */
-  private static final List<String[]> captured = new CopyOnWriteArrayList<>();
+  private static final List<String[]> captured = new ArrayList<>();
 
   /** Tracks whether we have cleared old fixture files yet in this JVM run. */
   private static final AtomicBoolean clearedOnce = new AtomicBoolean(false);
 
   /** Sequential file counters, shared across all flush() calls in one JVM run. */
-  private static final AtomicInteger allowedIdx = new AtomicInteger(0);
+  private static int allowedIdx = 0;
 
-  private static final AtomicInteger deniedIdx = new AtomicInteger(0);
+  private static int deniedIdx = 0;
 
   /** Deduplication sets, shared across all flush() calls in one JVM run. */
   private static final Set<String> seenAllowed = new HashSet<>();
@@ -51,7 +50,7 @@ public class OpaFixtureWriter {
   private static final Set<String> seenDenied = new HashSet<>();
 
   /** Called by the WireMock RequestListener on each request. Thread-safe. */
-  public static void capture(Request request, Response response) {
+  public static synchronized void capture(Request request, Response response) {
     captured.add(new String[] {request.getBodyAsString(), response.getBodyAsString()});
   }
 
@@ -67,8 +66,11 @@ public class OpaFixtureWriter {
     Files.createDirectories(ALLOWED_DIR);
     Files.createDirectories(DENIED_DIR);
 
-    List<String[]> toProcess = List.copyOf(captured);
-    captured.clear();
+    List<String[]> toProcess;
+    synchronized (OpaFixtureWriter.class) {
+      toProcess = new ArrayList<>(captured);
+      captured.clear();
+    }
 
     for (String[] pair : toProcess) {
       String requestBody = pair[0];
@@ -79,20 +81,19 @@ public class OpaFixtureWriter {
               .replace("allowedUser", OPA_REMAP_ALLOWED)
               .replace("deniedUser", OPA_REMAP_DENIED);
 
+      // WireMock stubs in this test suite always return {"result": "true"} or {"result": "false"}.
       boolean allowed = responseBody.contains("\"true\"");
 
       synchronized (OpaFixtureWriter.class) {
         if (allowed) {
           if (seenAllowed.add(remapped)) {
             Files.writeString(
-                ALLOWED_DIR.resolve(String.format("%04d.json", allowedIdx.getAndIncrement())),
-                remapped);
+                ALLOWED_DIR.resolve(String.format("%04d.json", allowedIdx++)), remapped);
           }
         } else {
           if (seenDenied.add(remapped)) {
             Files.writeString(
-                DENIED_DIR.resolve(String.format("%04d.json", deniedIdx.getAndIncrement())),
-                remapped);
+                DENIED_DIR.resolve(String.format("%04d.json", deniedIdx++)), remapped);
           }
         }
       }
