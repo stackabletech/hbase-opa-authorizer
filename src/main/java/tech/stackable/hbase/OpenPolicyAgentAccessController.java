@@ -11,9 +11,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Optional;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CompareOperator;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
@@ -72,6 +76,7 @@ import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.UserPermission;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.security.AccessControlException;
@@ -270,7 +275,7 @@ public class OpenPolicyAgentAccessController
       return;
     }
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.READ, OpType.GET, get.getFamilyMap().keySet());
+        user, tableName, Action.READ, OpType.GET, familiesFromQualifiers(get.getFamilyMap()));
   }
 
   @Override
@@ -285,7 +290,7 @@ public class OpenPolicyAgentAccessController
     }
     LOG.trace("preExists: user [{}] on table [{}] with get [{}]", user, tableName, get);
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.READ, OpType.EXISTS, get.getFamilyMap().keySet());
+        user, tableName, Action.READ, OpType.EXISTS, familiesFromQualifiers(get.getFamilyMap()));
     return exists;
   }
 
@@ -300,7 +305,7 @@ public class OpenPolicyAgentAccessController
     }
     LOG.trace("preScannerOpen: user [{}] on table [{}] with scan [{}]", user, tableName, scan);
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.READ, OpType.SCAN, scan.getFamilyMap().keySet());
+        user, tableName, Action.READ, OpType.SCAN, familiesFromQualifiers(scan.getFamilyMap()));
   }
 
   @Override
@@ -381,7 +386,7 @@ public class OpenPolicyAgentAccessController
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("prePut: user [{}] on table [{}] with put [{}]", user, tableName, put);
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.WRITE, OpType.PUT, put.getFamilyCellMap().keySet());
+        user, tableName, Action.WRITE, OpType.PUT, familiesFromCells(put.getFamilyCellMap()));
   }
 
   @Override
@@ -395,7 +400,7 @@ public class OpenPolicyAgentAccessController
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preDelete: user [{}] on table [{}] with delete [{}]", user, tableName, delete);
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.WRITE, OpType.DELETE, delete.getFamilyCellMap().keySet());
+        user, tableName, Action.WRITE, OpType.DELETE, familiesFromCells(delete.getFamilyCellMap()));
   }
 
   @Override
@@ -414,7 +419,7 @@ public class OpenPolicyAgentAccessController
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preAppend: user [{}] on table [{}] with append [{}]", user, tableName, append);
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.WRITE, OpType.APPEND, append.getFamilyCellMap().keySet());
+        user, tableName, Action.WRITE, OpType.APPEND, familiesFromCells(append.getFamilyCellMap()));
 
     // as per default access controller
     return null;
@@ -825,7 +830,11 @@ public class OpenPolicyAgentAccessController
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preIncrement: user [{}] on table [{}]", user, tableName);
     opaAclChecker.checkPermissionInfoWithOp(
-        user, tableName, Action.WRITE, OpType.INCREMENT, increment.getFamilyCellMap().keySet());
+        user,
+        tableName,
+        Action.WRITE,
+        OpType.INCREMENT,
+        familiesFromCells(increment.getFamilyCellMap()));
     // as per default controller
     return null;
   }
@@ -1142,6 +1151,49 @@ public class OpenPolicyAgentAccessController
     }
   }
 
+  /** Converts a mutation's family→cell map to a family→qualifier-names map for OPA. */
+  private static Map<String, List<String>> familiesFromCells(
+      Map<byte[], List<Cell>> familyCellMap) {
+    Map<String, List<String>> result = new TreeMap<>();
+    for (Map.Entry<byte[], List<Cell>> entry : familyCellMap.entrySet()) {
+      String family = Bytes.toString(entry.getKey());
+      List<String> qualifiers =
+          entry.getValue().stream()
+              .map(cell -> Bytes.toString(CellUtil.cloneQualifier(cell)))
+              .distinct()
+              .collect(Collectors.toList());
+      result.put(family, qualifiers);
+    }
+    return result;
+  }
+
+  /** Converts a Get/Scan family→qualifier map to a family→qualifier-names map for OPA. */
+  private static Map<String, List<String>> familiesFromQualifiers(
+      Map<byte[], NavigableSet<byte[]>> familyQualMap) {
+    Map<String, List<String>> result = new TreeMap<>();
+    for (Map.Entry<byte[], NavigableSet<byte[]>> entry : familyQualMap.entrySet()) {
+      String family = Bytes.toString(entry.getKey());
+      List<String> qualifiers =
+          entry.getValue() == null
+              ? Collections.emptyList()
+              : entry.getValue().stream().map(Bytes::toString).collect(Collectors.toList());
+      result.put(family, qualifiers);
+    }
+    return result;
+  }
+
+  /** Builds a single-entry family map for OPA from explicit family/qualifier byte arrays. */
+  private static Map<String, List<String>> familyMap(byte[] family, byte[] qualifier) {
+    if (family == null) return Collections.emptyMap();
+    Map<String, List<String>> result = new TreeMap<>();
+    result.put(
+        Bytes.toString(family),
+        qualifier != null
+            ? Collections.singletonList(Bytes.toString(qualifier))
+            : Collections.emptyList());
+    return result;
+  }
+
   private void requirePermission(
       final ObserverContext<?> ctx, final String namespace, String request, Action... permissions)
       throws IOException {
@@ -1201,13 +1253,7 @@ public class OpenPolicyAgentAccessController
                       perm);
                   try {
                     opaAclChecker.checkPermissionInfoWithOp(
-                        user,
-                        tableName,
-                        perm,
-                        opType,
-                        family != null
-                            ? Collections.singletonList(family)
-                            : Collections.emptyList());
+                        user, tableName, perm, opType, familyMap(family, qualifier));
                     return true;
                   } catch (AccessControlException e) {
                     last[0] = e;
