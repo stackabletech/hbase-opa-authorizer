@@ -76,6 +76,10 @@ public class OpaFixtureWriter {
       String requestBody = pair[0];
       String responseBody = pair[1];
 
+      // Only process requests that came from test users — skip cluster-internal traffic.
+      if (!requestBody.contains("allowedUser") && !requestBody.contains("deniedUser")) {
+        continue;
+      }
       String remapped =
           requestBody
               .replace("allowedUser", OPA_REMAP_ALLOWED)
