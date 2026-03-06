@@ -145,24 +145,10 @@ public class TestCoprocessorInterfaceCoverage {
               // --- TODO: genuine gaps that need OPA implementation ---
               // These pre-hooks are user-facing and should enforce OPA permissions, but are not yet
               // implemented. They are excluded here to keep this test focused on detecting new
-              // upstream
-              // methods; the implementation gaps are tracked separately in plan.md (Step 2+).
+              // upstream methods; the implementation gaps are tracked separately in plan.md.
               //
-              // preCheckAndMutate / preCheckAndMutateAfterRowLock: generalisation of
-              // checkAndPut/Delete;
-              // should require WRITE + READ (same as other check-and-* operations).
-              "preCheckAndMutate(ObserverContext, CheckAndMutate, CheckAndMutateResult)",
-              "preCheckAndMutateAfterRowLock(ObserverContext, CheckAndMutate, CheckAndMutateResult)",
-              // Filter-based overloads of checkAndPut/Delete: we check the byte[]-based overloads
-              // but
-              // not these Filter-based variants, which were added alongside the byte[] ones.
-              "preCheckAndPut(ObserverContext, byte[], Filter, Put, boolean)",
-              "preCheckAndPutAfterRowLock(ObserverContext, byte[], Filter, Put, boolean)",
-              "preCheckAndDelete(ObserverContext, byte[], Filter, Delete, boolean)",
-              "preCheckAndDeleteAfterRowLock(ObserverContext, byte[], Filter, Delete, boolean)",
               // Metadata listing hooks: getTableNames is covered post-hoc by postGetTableNames
-              // filtering;
-              // listNamespace* hooks are not currently enforced.
+              // filtering; listNamespace* hooks are not currently enforced.
               "preGetTableNames(ObserverContext, List, String)",
               "preListNamespaceDescriptors(ObserverContext, List)",
               "preListNamespaces(ObserverContext, List)",

@@ -67,7 +67,6 @@ import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionLifeCycleTracker;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
-import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.User;
@@ -1336,15 +1335,30 @@ public class OpenPolicyAgentAccessController
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "preStopRegionServer", Action.ADMIN);
   }
 
-  /*********************************** Not implemented (yet) ***********************************/
-
   @Override
   public Message preEndpointInvocation(
       ObserverContext<RegionCoprocessorEnvironment> ctx,
       Service service,
       String methodName,
-      Message request) {
-    LOG.trace("preEndpointInvocation not implemented! {}/{}", methodName, request);
+      Message request)
+      throws IOException {
+    // Skip EXEC check for calls to the AccessControlService itself to avoid recursive checks.
+    if (!(service instanceof AccessControlProtos.AccessControlService)) {
+      TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+      User user = getActiveUser(ctx);
+      LOG.debug(
+          "preEndpointInvocation: user [{}] on table [{}] method [{}]",
+          user,
+          tableName,
+          methodName);
+      requirePermission(
+          ctx,
+          "invoke(" + service.getDescriptorForType().getName() + "." + methodName + ")",
+          tableName,
+          null,
+          null,
+          Action.EXEC);
+    }
     return request;
   }
 
@@ -1355,7 +1369,7 @@ public class OpenPolicyAgentAccessController
       String methodName,
       Message request,
       Message.Builder responseBuilder) {
-    LOG.trace("postEndpointInvocation not implemented! {}/{}", methodName, request);
+    // as per reference AccessController
   }
 
   @Override
@@ -1364,14 +1378,25 @@ public class OpenPolicyAgentAccessController
       String namespace,
       TableName tableName,
       RegionInfo[] regionInfos,
-      String description) {
-    LOG.trace("preRequestLock not implemented! {}/{}", tableName, regionInfos);
+      String description)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    LOG.debug("preRequestLock: user [{}] namespace [{}] table [{}]", user, namespace, tableName);
+    if (namespace != null && !namespace.isEmpty()) {
+      requirePermission(ctx, namespace, "requestLock", Action.ADMIN, Action.CREATE);
+    } else {
+      TableName tn = tableName != null ? tableName : regionInfos[0].getTable();
+      requirePermission(ctx, "requestLock", tn, null, null, Action.ADMIN, Action.CREATE);
+    }
   }
 
   @Override
   public void preLockHeartbeat(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName, String description) {
-    LOG.trace("preLockHeartbeat not implemented! {}/{}", tableName, description);
+      ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName, String description)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    LOG.debug("preLockHeartbeat: user [{}] table [{}]", user, tableName);
+    requirePermission(ctx, "lockHeartbeat", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
 
   /*********************************** Global admin operations ***********************************/
@@ -1381,11 +1406,6 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> ctx, final long procId) throws IOException {
     requirePermission(
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "abortProcedure", Action.ADMIN);
-  }
-
-  @Override
-  public void postAbortProcedure(ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    // There is nothing to do at this time after the procedure abort request was sent.
   }
 
   @Override
@@ -1428,11 +1448,6 @@ public class OpenPolicyAgentAccessController
   }
 
   @Override
-  public void postRollWALWriterRequest(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    // as per default access controller
-  }
-
-  @Override
   public void preSetUserQuota(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String userName,
@@ -1450,12 +1465,6 @@ public class OpenPolicyAgentAccessController
       throws IOException {
     requirePermission(
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "setRegionServerQuota", Action.ADMIN);
-  }
-
-  @Override
-  public ReplicationEndpoint postCreateReplicationEndPoint(
-      ObserverContext<RegionServerCoprocessorEnvironment> ctx, ReplicationEndpoint endpoint) {
-    return endpoint;
   }
 
   @Override
