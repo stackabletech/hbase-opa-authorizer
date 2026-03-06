@@ -55,6 +55,7 @@
     <hbase.version>2.6.4</hbase.version>
     <hbase.protobuf.version>2.5.0</hbase.protobuf.version>
     <caffeine.version>2.8.8</caffeine.version>
+    <opa.version>0.63.0</opa.version>
   </properties>
 
   <dependencies>
@@ -138,6 +139,30 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>opa-linux-amd64</id>
+      <activation>
+        <os><name>Linux</name><arch>amd64</arch></os>
+      </activation>
+      <properties><opa.classifier>linux_amd64_static</opa.classifier></properties>
+    </profile>
+    <profile>
+      <id>opa-mac-amd64</id>
+      <activation>
+        <os><name>Mac OS X</name><arch>x86_64</arch></os>
+      </activation>
+      <properties><opa.classifier>darwin_amd64</opa.classifier></properties>
+    </profile>
+    <profile>
+      <id>opa-mac-arm64</id>
+      <activation>
+        <os><name>Mac OS X</name><arch>aarch64</arch></os>
+      </activation>
+      <properties><opa.classifier>darwin_arm64</opa.classifier></properties>
+    </profile>
+  </profiles>
 
   <build>
     <plugins>
@@ -239,6 +264,60 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-surefire-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>com.googlecode.maven-download-plugin</groupId>
+        <artifactId>download-maven-plugin</artifactId>
+        <version>1.8.1</version>
+        <executions>
+          <execution>
+            <id>download-opa</id>
+            <phase>process-test-resources</phase>
+            <goals><goal>wget</goal></goals>
+            <configuration>
+              <url>https://github.com/open-policy-agent/opa/releases/download/v${opa.version}/opa_${opa.classifier}</url>
+              <outputDirectory>${project.build.directory}</outputDirectory>
+              <outputFileName>opa</outputFileName>
+              <skipCache>false</skipCache>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>chmod-opa</id>
+            <phase>process-test-resources</phase>
+            <goals><goal>exec</goal></goals>
+            <configuration>
+              <executable>chmod</executable>
+              <arguments>
+                <argument>+x</argument>
+                <argument>${project.build.directory}/opa</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>opa-policy-test</id>
+            <phase>verify</phase>
+            <goals><goal>exec</goal></goals>
+            <configuration>
+              <executable>${project.build.directory}/opa</executable>
+              <arguments>
+                <argument>test</argument>
+                <argument>src/test/rego/hbase.rego</argument>
+                <argument>src/test/rego/hbase_test.rego</argument>
+                <argument>--data</argument>
+                <argument>src/test/rego/fixtures</argument>
+                <argument>-v</argument>
+              </arguments>
+              <skip>${maven.test.skip}</skip>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
