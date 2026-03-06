@@ -5,7 +5,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.createTable;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.deleteTable;
-import static org.junit.Assert.fail;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
@@ -27,10 +26,7 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionServerCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.ScanType;
-import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.security.AccessControlException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -98,16 +94,6 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
     return region.getCoprocessorHost().findCoprocessor(OpenPolicyAgentAccessController.class);
   }
 
-  /** Stubs a deny for writeOnlyUser when action is READ, to verify READ is required. */
-  private void stubDenyReadForWriteOnlyUser() {
-    stubFor(
-        post("/")
-            .withRequestBody(
-                WireMock.matchingJsonPath("$.input.callerUgi[?(@.userName == 'writeOnlyUser')]"))
-            .withRequestBody(WireMock.matchingJsonPath("$.input[?(@.action == 'READ')]"))
-            .willReturn(ok().withBody("{\"result\": \"false\"}")));
-  }
-
   // --- read hooks ---
 
   @Test
@@ -170,11 +156,8 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
 
   @Test
   public void testPreFlush() throws Exception {
-    assertAllowedThenDenied(
-        () -> {
-          getRegionController().preFlush(regionCtx(), null);
-          return null;
-        });
+    // preFlush is an internal storage engine hook; no authorization check is applied.
+    getRegionController().preFlush(regionCtx(), null);
   }
 
   @Test
@@ -186,7 +169,7 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
         });
   }
 
-  // --- read+write hooks (require both WRITE and READ) ---
+  // --- read+write hooks (require WRITE or READ) ---
 
   @Test
   public void testPreAppend() throws Exception {
@@ -198,46 +181,12 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
   }
 
   @Test
-  public void testPreAppendRequiresRead() throws Exception {
-    User writeOnlyUser = User.createUserForTesting(conf, "writeOnlyUser", new String[0]);
-    stubDenyReadForWriteOnlyUser();
-    SecureTestUtil.AccessTestAction action =
-        () -> {
-          getRegionController().preAppend(regionCtx(), new Append(TEST_ROW));
-          return null;
-        };
-    try {
-      writeOnlyUser.runAs(action);
-      fail("AccessControlException should have been thrown");
-    } catch (AccessControlException e) {
-      logOk(e);
-    }
-  }
-
-  @Test
   public void testPreIncrement() throws Exception {
     assertAllowedThenDenied(
         () -> {
           getRegionController().preIncrement(regionCtx(), new Increment(TEST_ROW));
           return null;
         });
-  }
-
-  @Test
-  public void testPreIncrementRequiresRead() throws Exception {
-    User writeOnlyUser = User.createUserForTesting(conf, "writeOnlyUser", new String[0]);
-    stubDenyReadForWriteOnlyUser();
-    SecureTestUtil.AccessTestAction action =
-        () -> {
-          getRegionController().preIncrement(regionCtx(), new Increment(TEST_ROW));
-          return null;
-        };
-    try {
-      writeOnlyUser.runAs(action);
-      fail("AccessControlException should have been thrown");
-    } catch (AccessControlException e) {
-      logOk(e);
-    }
   }
 
   @Test
@@ -257,33 +206,6 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
                   false);
           return null;
         });
-  }
-
-  @Test
-  public void testPreCheckAndPutRequiresRead() throws Exception {
-    User writeOnlyUser = User.createUserForTesting(conf, "writeOnlyUser", new String[0]);
-    stubDenyReadForWriteOnlyUser();
-    Put put = new Put(TEST_ROW);
-    SecureTestUtil.AccessTestAction action =
-        () -> {
-          getRegionController()
-              .preCheckAndPut(
-                  regionCtx(),
-                  TEST_ROW,
-                  TEST_FAMILY,
-                  TEST_QUALIFIER,
-                  CompareOperator.EQUAL,
-                  null,
-                  put,
-                  false);
-          return null;
-        };
-    try {
-      writeOnlyUser.runAs(action);
-      fail("AccessControlException should have been thrown");
-    } catch (AccessControlException e) {
-      logOk(e);
-    }
   }
 
   @Test
