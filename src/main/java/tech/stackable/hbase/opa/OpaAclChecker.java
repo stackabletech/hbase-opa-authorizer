@@ -12,6 +12,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -88,9 +90,20 @@ public class OpaAclChecker {
   public void checkPermissionInfoWithOp(
       User user, TableName table, Permission.Action action, OpType operation)
       throws AccessControlException {
+    checkPermissionInfoWithOp(user, table, action, operation, Collections.emptyList());
+  }
+
+  public void checkPermissionInfoWithOp(
+      User user,
+      TableName table,
+      Permission.Action action,
+      OpType operation,
+      Collection<byte[]> families)
+      throws AccessControlException {
     OpaAllowQuery query =
         new OpaAllowQuery(
-            new OpaAllowQuery.OpaAllowQueryInput(user.getUGI(), table, action, operation));
+            new OpaAllowQuery.OpaAllowQueryInput(
+                user.getUGI(), table, action, operation, families));
     this.checkPermissionInfo(query);
   }
 

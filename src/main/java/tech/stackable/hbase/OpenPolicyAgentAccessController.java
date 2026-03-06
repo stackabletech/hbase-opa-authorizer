@@ -7,6 +7,7 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -268,7 +269,8 @@ public class OpenPolicyAgentAccessController
     if (TableName.META_TABLE_NAME.equals(tableName)) {
       return;
     }
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.READ, OpType.GET);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.READ, OpType.GET, get.getFamilyMap().keySet());
   }
 
   @Override
@@ -282,7 +284,8 @@ public class OpenPolicyAgentAccessController
       return exists;
     }
     LOG.trace("preExists: user [{}] on table [{}] with get [{}]", user, tableName, get);
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.READ, OpType.EXISTS);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.READ, OpType.EXISTS, get.getFamilyMap().keySet());
     return exists;
   }
 
@@ -296,7 +299,8 @@ public class OpenPolicyAgentAccessController
       return;
     }
     LOG.trace("preScannerOpen: user [{}] on table [{}] with scan [{}]", user, tableName, scan);
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.READ, OpType.SCAN);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.READ, OpType.SCAN, scan.getFamilyMap().keySet());
   }
 
   @Override
@@ -376,7 +380,8 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("prePut: user [{}] on table [{}] with put [{}]", user, tableName, put);
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.PUT);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.WRITE, OpType.PUT, put.getFamilyCellMap().keySet());
   }
 
   @Override
@@ -389,7 +394,8 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preDelete: user [{}] on table [{}] with delete [{}]", user, tableName, delete);
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.DELETE);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.WRITE, OpType.DELETE, delete.getFamilyCellMap().keySet());
   }
 
   @Override
@@ -407,7 +413,8 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preAppend: user [{}] on table [{}] with append [{}]", user, tableName, append);
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.APPEND);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.WRITE, OpType.APPEND, append.getFamilyCellMap().keySet());
 
     // as per default access controller
     return null;
@@ -817,7 +824,8 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preIncrement: user [{}] on table [{}]", user, tableName);
-    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.INCREMENT);
+    opaAclChecker.checkPermissionInfoWithOp(
+        user, tableName, Action.WRITE, OpType.INCREMENT, increment.getFamilyCellMap().keySet());
     // as per default controller
     return null;
   }
@@ -1192,7 +1200,14 @@ public class OpenPolicyAgentAccessController
                       tableName,
                       perm);
                   try {
-                    opaAclChecker.checkPermissionInfoWithOp(user, tableName, perm, opType);
+                    opaAclChecker.checkPermissionInfoWithOp(
+                        user,
+                        tableName,
+                        perm,
+                        opType,
+                        family != null
+                            ? Collections.singletonList(family)
+                            : Collections.emptyList());
                     return true;
                   } catch (AccessControlException e) {
                     last[0] = e;
