@@ -48,6 +48,7 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
 
   @BeforeClass
   public static void setUpClass() throws Exception {
+    wireMockRule.addMockServiceRequestListener(OpaFixtureWriter::capture);
     stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
     setup(OpenPolicyAgentAccessController.class, false, OPA_URL);
 

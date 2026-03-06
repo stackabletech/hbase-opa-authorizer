@@ -103,7 +103,7 @@ public class OpaFixtureWriter {
   private static void deleteDir(Path dir) throws IOException {
     if (Files.exists(dir)) {
       try (var entries = Files.list(dir)) {
-        for (Path p : entries.toList()) {
+        for (Path p : entries.collect(java.util.stream.Collectors.toList())) {
           Files.delete(p);
         }
       }

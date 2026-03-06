@@ -262,6 +262,7 @@ public class TestUtils {
   }
 
   protected static void tearDown() throws Exception {
+    OpaFixtureWriter.flush();
     TEST_UTIL.shutdownMiniCluster();
   }
 

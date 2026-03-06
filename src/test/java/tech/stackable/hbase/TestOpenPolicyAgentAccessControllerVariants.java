@@ -14,6 +14,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.security.AccessControlException;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -25,6 +26,11 @@ public class TestOpenPolicyAgentAccessControllerVariants extends TestUtils {
   public static final String OPA_URL = "http://localhost:8089";
 
   @Rule public WireMockRule wireMockRule = new WireMockRule(8089);
+
+  @Before
+  public void setUpListener() {
+    wireMockRule.addMockServiceRequestListener(OpaFixtureWriter::capture);
+  }
 
   @Test
   public void testDryRun() throws Exception {
