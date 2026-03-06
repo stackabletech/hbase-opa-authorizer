@@ -1,5 +1,6 @@
 package tech.stackable.hbase;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.MapMaker;
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
@@ -1182,15 +1183,13 @@ public class OpenPolicyAgentAccessController
   }
 
   /** Builds a single-entry family map for OPA from explicit family/qualifier byte arrays. */
-  private static Map<String, List<String>> familyMap(byte[] family, byte[] qualifier) {
-    if (family == null) return Collections.emptyMap();
-    Map<String, List<String>> result = new TreeMap<>();
-    result.put(
+  private static ImmutableMap<String, List<String>> familyMap(byte[] family, byte[] qualifier) {
+    if (family == null) return ImmutableMap.of();
+    return ImmutableMap.of(
         Bytes.toString(family),
         qualifier != null
             ? Collections.singletonList(Bytes.toString(qualifier))
             : Collections.emptyList());
-    return result;
   }
 
   private void requirePermission(
@@ -1246,9 +1245,10 @@ public class OpenPolicyAgentAccessController
             .anyMatch(
                 perm -> {
                   LOG.trace(
-                      "requirePermission: user [{}] tableName[{}] permission [{}]",
+                      "requirePermission: user [{}] tableName[{}] request [{}] permission [{}]",
                       user,
                       tableName,
+                      request,
                       perm);
                   try {
                     opaAclChecker.checkPermissionInfoWithOp(
