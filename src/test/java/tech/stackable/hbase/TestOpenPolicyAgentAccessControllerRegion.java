@@ -21,6 +21,7 @@ import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.ObserverContextImpl;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.RegionServerCoprocessorEnvironment;
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
@@ -261,6 +262,49 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
                   null,
                   delete,
                   false);
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCheckAndPutWithFilter() throws Exception {
+    Put put = new Put(TEST_ROW);
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController().preCheckAndPut(regionCtx(), TEST_ROW, (Filter) null, put, false);
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCheckAndPutAfterRowLockWithFilter() throws Exception {
+    Put put = new Put(TEST_ROW);
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController()
+              .preCheckAndPutAfterRowLock(regionCtx(), TEST_ROW, (Filter) null, put, false);
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCheckAndDeleteWithFilter() throws Exception {
+    Delete delete = new Delete(TEST_ROW);
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController()
+              .preCheckAndDelete(regionCtx(), TEST_ROW, (Filter) null, delete, false);
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCheckAndDeleteAfterRowLockWithFilter() throws Exception {
+    Delete delete = new Delete(TEST_ROW);
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController()
+              .preCheckAndDeleteAfterRowLock(regionCtx(), TEST_ROW, (Filter) null, delete, false);
           return null;
         });
   }

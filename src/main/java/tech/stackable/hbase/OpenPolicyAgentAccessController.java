@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.coprocessor.RegionServerCoprocessor;
 import org.apache.hadoop.hbase.coprocessor.RegionServerCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.RegionServerObserver;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.quotas.GlobalQuotaSettings;
@@ -621,6 +622,90 @@ public class OpenPolicyAgentAccessController
       final byte[] qualifier,
       final CompareOperator op,
       final ByteArrayComparable comparator,
+      final Delete delete,
+      final boolean result)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+    LOG.trace(
+        "preCheckAndDeleteAfterRowLock: user [{}] on table [{}] for delete [{}]",
+        user,
+        tableName,
+        delete);
+    requirePermission(
+        ctx,
+        "checkAndDelete",
+        tableName,
+        null,
+        null,
+        OpType.CHECK_AND_DELETE,
+        Action.READ,
+        Action.WRITE);
+    return result;
+  }
+
+  @Override
+  public boolean preCheckAndPut(
+      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final byte[] row,
+      final Filter filter,
+      final Put put,
+      final boolean result)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+    LOG.trace("preCheckAndPut: user [{}] on table [{}] for put [{}]", user, tableName, put);
+    requirePermission(
+        ctx, "checkAndPut", tableName, null, null, OpType.CHECK_AND_PUT, Action.READ, Action.WRITE);
+    return result;
+  }
+
+  @Override
+  public boolean preCheckAndPutAfterRowLock(
+      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final byte[] row,
+      final Filter filter,
+      final Put put,
+      final boolean result)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+    LOG.trace(
+        "preCheckAndPutAfterRowLock: user [{}] on table [{}] for put [{}]", user, tableName, put);
+    requirePermission(
+        ctx, "checkAndPut", tableName, null, null, OpType.CHECK_AND_PUT, Action.READ, Action.WRITE);
+    return result;
+  }
+
+  @Override
+  public boolean preCheckAndDelete(
+      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final byte[] row,
+      final Filter filter,
+      final Delete delete,
+      final boolean result)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
+    LOG.trace(
+        "preCheckAndDelete: user [{}] on table [{}] for delete [{}]", user, tableName, delete);
+    requirePermission(
+        ctx,
+        "checkAndDelete",
+        tableName,
+        null,
+        null,
+        OpType.CHECK_AND_DELETE,
+        Action.READ,
+        Action.WRITE);
+    return result;
+  }
+
+  @Override
+  public boolean preCheckAndDeleteAfterRowLock(
+      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final byte[] row,
+      final Filter filter,
       final Delete delete,
       final boolean result)
       throws IOException {
