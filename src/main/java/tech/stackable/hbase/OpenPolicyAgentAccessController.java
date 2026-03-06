@@ -397,7 +397,7 @@ public class OpenPolicyAgentAccessController
     TableName tableName = c.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preAppend: user [{}] on table [{}] with append [{}]", user, tableName, append);
 
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE, Action.READ);
 
     // as per default access controller
     return null;
@@ -560,7 +560,7 @@ public class OpenPolicyAgentAccessController
     TableName tableName = c.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preCheckAndPut: user [{}] on table [{}] for put [{}]", user, tableName, put);
 
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE, Action.READ);
     return result;
   }
 
@@ -580,7 +580,7 @@ public class OpenPolicyAgentAccessController
     LOG.trace(
         "preCheckAndPutAfterRowLock: user [{}] on table [{}] for put [{}]", user, tableName, put);
 
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE, Action.READ);
     return result;
   }
 
@@ -600,7 +600,7 @@ public class OpenPolicyAgentAccessController
     LOG.trace(
         "preCheckAndDelete: user [{}] on table [{}] for delete [{}]", user, tableName, delete);
 
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE, Action.READ);
     return result;
   }
 
@@ -623,7 +623,7 @@ public class OpenPolicyAgentAccessController
         tableName,
         delete);
 
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE, Action.READ);
     return result;
   }
 
@@ -683,7 +683,7 @@ public class OpenPolicyAgentAccessController
     TableName tableName = c.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preIncrement: user [{}] on table [{}]", user, tableName);
 
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE, Action.READ);
     // as per default controller
     return null;
   }
@@ -771,11 +771,10 @@ public class OpenPolicyAgentAccessController
     return Optional.of(this);
   }
 
-  /*********************************** Not implemented (yet) ***********************************/
-
   @Override
   public String preModifyTableStoreFileTracker(
-      ObserverContext<MasterCoprocessorEnvironment> c, TableName tableName, String dstSFT) {
+      ObserverContext<MasterCoprocessorEnvironment> c, TableName tableName, String dstSFT)
+      throws IOException {
     requirePermission(
         c, "modifyTableStoreFileTracker", tableName, null, null, Action.ADMIN, Action.CREATE);
     return dstSFT;
@@ -786,7 +785,8 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> c,
       TableName tableName,
       byte[] family,
-      String dstSFT) {
+      String dstSFT)
+      throws IOException {
     requirePermission(
         c,
         "modifyColumnFamilyStoreFileTracker",
@@ -803,23 +803,26 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> c,
       RegionInfo region,
       ServerName srcServer,
-      ServerName destServer) {
+      ServerName destServer)
+      throws IOException {
     requirePermission(c, "move", region.getTable(), null, null, Action.ADMIN);
   }
 
   @Override
-  public void preAssign(ObserverContext<MasterCoprocessorEnvironment> c, RegionInfo regionInfo) {
+  public void preAssign(ObserverContext<MasterCoprocessorEnvironment> c, RegionInfo regionInfo)
+      throws IOException {
     requirePermission(c, "assign", regionInfo.getTable(), null, null, Action.ADMIN);
   }
 
   @Override
-  public void preUnassign(ObserverContext<MasterCoprocessorEnvironment> c, RegionInfo regionInfo) {
+  public void preUnassign(ObserverContext<MasterCoprocessorEnvironment> c, RegionInfo regionInfo)
+      throws IOException {
     requirePermission(c, "unassign", regionInfo.getTable(), null, null, Action.ADMIN);
   }
 
   @Override
   public void preRegionOffline(
-      ObserverContext<MasterCoprocessorEnvironment> c, RegionInfo regionInfo) {
+      ObserverContext<MasterCoprocessorEnvironment> c, RegionInfo regionInfo) throws IOException {
     requirePermission(c, "regionOffline", regionInfo.getTable(), null, null, Action.ADMIN);
   }
 
@@ -827,7 +830,8 @@ public class OpenPolicyAgentAccessController
   public void preSnapshot(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot,
-      final TableDescriptor hTableDescriptor) {
+      final TableDescriptor hTableDescriptor)
+      throws IOException {
     requirePermission(
         ctx,
         "snapshot " + snapshot.getName(),
@@ -839,55 +843,262 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preListSnapshot(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, final SnapshotDescription snapshot) {
-    LOG.debug("preListSnapshot not yet implemented! Snapshot: {}", snapshot);
+      ObserverContext<MasterCoprocessorEnvironment> ctx, final SnapshotDescription snapshot)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    LOG.debug("preListSnapshot: user [{}] snapshot[{}]", user, snapshot);
+    opaAclChecker.checkPermissionInfo(user, snapshot.getTableName(), Action.ADMIN);
   }
 
   @Override
   public void preCloneSnapshot(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot,
-      final TableDescriptor hTableDescriptor) {
-    LOG.debug("preCloneSnapshot not yet implemented! Snapshot: {}", snapshot);
+      final TableDescriptor hTableDescriptor)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    TableName tableName = hTableDescriptor.getTableName();
+    LOG.debug("preCloneSnapshot: user [{}] snapshot[{}] table [{}]", user, snapshot, tableName);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.CREATE);
   }
 
   @Override
   public void preRestoreSnapshot(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot,
-      final TableDescriptor hTableDescriptor) {
-    LOG.debug("preRestoreSnapshot not yet implemented! Snapshot: {}", snapshot);
+      final TableDescriptor hTableDescriptor)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    TableName tableName = hTableDescriptor.getTableName();
+    LOG.debug("preRestoreSnapshot: user [{}] snapshot[{}] table [{}]", user, snapshot, tableName);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.CREATE);
   }
 
   @Override
   public void preDeleteSnapshot(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, final SnapshotDescription snapshot) {
-    LOG.debug("preDeleteSnapshot not yet implemented! Snapshot: {}", snapshot);
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, final SnapshotDescription snapshot)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    LOG.debug("preDeleteSnapshot: user [{}] snapshot[{}]", user, snapshot);
+    opaAclChecker.checkPermissionInfo(user, snapshot.getTableName(), Action.ADMIN);
   }
 
   @Override
   public void preSplitRegion(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final TableName tableName,
-      final byte[] splitRow) {
+      final byte[] splitRow)
+      throws IOException {
     requirePermission(ctx, "split", tableName, null, null, Action.ADMIN);
   }
 
   @Override
   public void preBulkLoadHFile(
-      ObserverContext<RegionCoprocessorEnvironment> ctx, List<Pair<byte[], String>> familyPaths) {
-    LOG.debug("preBulkLoadHFile not implemented!");
+      ObserverContext<RegionCoprocessorEnvironment> ctx, List<Pair<byte[], String>> familyPaths)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    var tableName = ctx.getEnvironment().getRegion().getTableDescriptor().getTableName();
+    LOG.debug("preBulkLoadHFile: user [{}] on table [{}]", user, tableName);
+    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
   }
 
   @Override
-  public void prePrepareBulkLoad(ObserverContext<RegionCoprocessorEnvironment> ctx) {
-    LOG.debug("prePrepareBulkLoad not implemented!");
+  public void prePrepareBulkLoad(ObserverContext<RegionCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx,
+        "prePrepareBulkLoad",
+        ctx.getEnvironment().getRegion().getTableDescriptor().getTableName(),
+        null,
+        null,
+        Action.ADMIN,
+        Action.CREATE);
   }
 
   @Override
-  public void preCleanupBulkLoad(ObserverContext<RegionCoprocessorEnvironment> ctx) {
-    LOG.debug("preCleanupBulkLoad not implemented!");
+  public void preCleanupBulkLoad(ObserverContext<RegionCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx,
+        "preCleanupBulkLoad",
+        ctx.getEnvironment().getRegion().getTableDescriptor().getTableName(),
+        null,
+        null,
+        Action.ADMIN,
+        Action.CREATE);
   }
+
+  @Override
+  public void preSetUserQuota(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName,
+      final TableName tableName,
+      final GlobalQuotaSettings quotas)
+      throws IOException {
+    requirePermission(ctx, "setUserTableQuota", tableName, null, null, Action.ADMIN);
+  }
+
+  @Override
+  public void preSetUserQuota(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName,
+      final String namespace,
+      final GlobalQuotaSettings quotas)
+      throws IOException {
+    requirePermission(ctx, namespace, "setUserNamespaceQuota", Action.ADMIN);
+  }
+
+  @Override
+  public void preSetTableQuota(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final TableName tableName,
+      final GlobalQuotaSettings quotas)
+      throws IOException {
+    requirePermission(ctx, "setTableQuota", tableName, null, null, Action.ADMIN);
+  }
+
+  @Override
+  public void preSetNamespaceQuota(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String namespace,
+      final GlobalQuotaSettings quotas)
+      throws IOException {
+    requirePermission(ctx, namespace, "setNamespaceQuota", Action.ADMIN);
+  }
+
+  @Override
+  public void preMergeRegions(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, final RegionInfo[] regionsToMerge)
+      throws IOException {
+    requirePermission(ctx, "mergeRegions", regionsToMerge[0].getTable(), null, null, Action.ADMIN);
+  }
+
+  @Override
+  public void preGetUserPermissions(
+      ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String userName,
+      String namespace,
+      TableName tableName,
+      byte[] family,
+      byte[] qualifier)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    if (tableName != null) {
+      LOG.debug("preGetUserPermissions: user [{}] on table [{}]", user, tableName);
+      requirePermission(ctx, "getUserPermissions", tableName, family, qualifier, Action.ADMIN);
+    } else if (namespace != null) {
+      LOG.debug("preGetUserPermissions: user [{}] on namespace [{}]", user, namespace);
+      requirePermission(ctx, namespace, "getUserPermissions", Action.ADMIN);
+    } else {
+      LOG.debug("preGetUserPermissions: user [{}] global", user);
+      requirePermission(
+          ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "getUserPermissions", Action.ADMIN);
+    }
+  }
+
+  private void requirePermission(
+      final ObserverContext<?> ctx, final String namespace, String request, Action perm)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    LOG.trace(
+        "requirePermission: user [{}] namespace[{}] request [{}] permission [{}]",
+        user,
+        namespace,
+        request,
+        perm);
+    opaAclChecker.checkPermissionInfo(user, namespace, perm);
+  }
+
+  private void requirePermission(
+      ObserverContext<?> ctx,
+      String request,
+      TableName tableName,
+      byte[] family,
+      byte[] qualifier,
+      Action... permissions)
+      throws IOException {
+    User user = getActiveUser(ctx);
+    for (Action perm : permissions) {
+      LOG.trace(
+          "requirePermission: user [{}] tableName[{}] permission [{}]", user, tableName, perm);
+      opaAclChecker.checkPermissionInfo(user, tableName, perm);
+    }
+  }
+
+  @Override
+  public void preBalance(ObserverContext<MasterCoprocessorEnvironment> ctx, BalanceRequest request)
+      throws IOException {
+    requirePermission(ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "balance", Action.ADMIN);
+  }
+
+  @Override
+  public void preBalanceSwitch(ObserverContext<MasterCoprocessorEnvironment> ctx, boolean newValue)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "balanceSwitch", Action.ADMIN);
+  }
+
+  @Override
+  public void preShutdown(ObserverContext<MasterCoprocessorEnvironment> ctx) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "shutdown", Action.ADMIN);
+  }
+
+  @Override
+  public void preStopMaster(ObserverContext<MasterCoprocessorEnvironment> ctx) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "stopMaster", Action.ADMIN);
+  }
+
+  @Override
+  public void preClearDeadServers(ObserverContext<MasterCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "clearDeadServers", Action.ADMIN);
+  }
+
+  @Override
+  public void preDecommissionRegionServers(
+      ObserverContext<MasterCoprocessorEnvironment> ctx, List<ServerName> servers, boolean offload)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "decommissionRegionServers",
+        Action.ADMIN);
+  }
+
+  @Override
+  public void preListDecommissionedRegionServers(ObserverContext<MasterCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "listDecommissionedRegionServers",
+        Action.READ);
+  }
+
+  @Override
+  public void preRecommissionRegionServer(
+      ObserverContext<MasterCoprocessorEnvironment> ctx,
+      ServerName server,
+      List<byte[]> encodedRegionNames)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "recommissionRegionServers",
+        Action.ADMIN);
+  }
+
+  @Override
+  public void preStopRegionServer(ObserverContext<RegionServerCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "preStopRegionServer", Action.ADMIN);
+  }
+
+  /*********************************** Not implemented (yet) ***********************************/
 
   @Override
   public Message preEndpointInvocation(
@@ -925,77 +1136,13 @@ public class OpenPolicyAgentAccessController
     LOG.debug("preLockHeartbeat not implemented! {}/{}", tableName, description);
   }
 
-  @Override
-  public void preSetUserQuota(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final String userName,
-      final TableName tableName,
-      final GlobalQuotaSettings quotas) {
-    requirePermission(ctx, "setUserTableQuota", tableName, null, null, Action.ADMIN);
-  }
-
-  @Override
-  public void preSetUserQuota(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final String userName,
-      final String namespace,
-      final GlobalQuotaSettings quotas) {
-    requirePermission(ctx, "setUserNamespaceQuota", Action.ADMIN);
-  }
-
-  @Override
-  public void preSetTableQuota(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final TableName tableName,
-      final GlobalQuotaSettings quotas) {
-    requirePermission(ctx, "setTableQuota", tableName, null, null, Action.ADMIN);
-  }
-
-  @Override
-  public void preSetNamespaceQuota(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final String namespace,
-      final GlobalQuotaSettings quotas) {
-    requirePermission(ctx, "setNamespaceQuota", Action.ADMIN);
-  }
-
-  @Override
-  public void preMergeRegions(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, final RegionInfo[] regionsToMerge) {
-    requirePermission(ctx, "mergeRegions", regionsToMerge[0].getTable(), null, null, Action.ADMIN);
-  }
-
-  @Override
-  public void preGetUserPermissions(
-      ObserverContext<MasterCoprocessorEnvironment> ctx,
-      String userName,
-      String namespace,
-      TableName tableName,
-      byte[] family,
-      byte[] qualifier) {
-    LOG.debug("preGetUserPermissions not implemented! {}/{}", userName, tableName);
-  }
-
-  private void requirePermission(ObserverContext<?> ctx, String request, Action perm) {
-    LOG.debug("requirePermission not implemented! {}/{}", request, perm);
-  }
-
-  private void requirePermission(
-      ObserverContext<?> ctx,
-      String request,
-      TableName tableName,
-      byte[] family,
-      byte[] qualifier,
-      Action... permissions) {
-    LOG.debug("requirePermission for table not implemented! {}/{}", tableName, permissions);
-  }
-
-  /*********** Not implemented (admin tasks coming from the Master or RegionServer) *************************/
+  /*********************************** Global admin operations ***********************************/
 
   @Override
   public void preAbortProcedure(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, final long procId) {
-    LOG.debug("preAbortProcedure not implemented!");
+      ObserverContext<MasterCoprocessorEnvironment> ctx, final long procId) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "abortProcedure", Action.ADMIN);
   }
 
   @Override
@@ -1004,83 +1151,42 @@ public class OpenPolicyAgentAccessController
   }
 
   @Override
-  public void preGetProcedures(ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    LOG.debug("preGetProcedures not implemented!");
+  public void preGetProcedures(ObserverContext<MasterCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "getProcedures", Action.ADMIN);
   }
 
   @Override
-  public void preGetLocks(ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    LOG.trace("preGetLocks not implemented!");
+  public void preGetLocks(ObserverContext<MasterCoprocessorEnvironment> ctx) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "getLocks", Action.ADMIN);
   }
 
   @Override
   public void preSetSplitOrMergeEnabled(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final boolean newValue,
-      final MasterSwitchType switchType) {
-    LOG.debug("preSetSplitOrMergeEnabled not implemented!");
-  }
-
-  @Override
-  public void preBalance(ObserverContext<MasterCoprocessorEnvironment> c, BalanceRequest request) {
-    LOG.debug("preBalance not implemented!");
-  }
-
-  @Override
-  public void preBalanceSwitch(ObserverContext<MasterCoprocessorEnvironment> c, boolean newValue) {
-    LOG.debug("preBalanceSwitch not implemented!");
-  }
-
-  @Override
-  public void preShutdown(ObserverContext<MasterCoprocessorEnvironment> c) {
-    LOG.debug("preShutdown not implemented!");
-  }
-
-  @Override
-  public void preStopMaster(ObserverContext<MasterCoprocessorEnvironment> c) {
-    LOG.debug("preStopMaster not implemented!");
+      final MasterSwitchType switchType)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "setSplitOrMergeEnabled",
+        Action.ADMIN);
   }
 
   @Override
   public void postStartMaster(ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    LOG.debug("postStartMaster not implemented!");
+    // This would be used to create an ACL table if it does not already exist.
+    // We do not use an ACL table as all checks are routed to OPA.
   }
 
   @Override
-  public void preClearDeadServers(ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    LOG.debug("preClearDeadServers not implemented!");
-  }
-
-  @Override
-  public void preDecommissionRegionServers(
-      ObserverContext<MasterCoprocessorEnvironment> ctx,
-      List<ServerName> servers,
-      boolean offload) {
-    LOG.debug("preDecommissionRegionServers not implemented!");
-  }
-
-  @Override
-  public void preListDecommissionedRegionServers(
-      ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    LOG.debug("preListDecommissionedRegionServers not implemented!");
-  }
-
-  @Override
-  public void preRecommissionRegionServer(
-      ObserverContext<MasterCoprocessorEnvironment> ctx,
-      ServerName server,
-      List<byte[]> encodedRegionNames) {
-    LOG.debug("preRecommissionRegionServer not implemented!");
-  }
-
-  @Override
-  public void preStopRegionServer(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    LOG.debug("preStopRegionServer not implemented!");
-  }
-
-  @Override
-  public void preRollWALWriterRequest(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    LOG.debug("preRollWALWriterRequest not implemented!");
+  public void preRollWALWriterRequest(ObserverContext<RegionServerCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "rollWALWriterRequest", Action.ADMIN);
   }
 
   @Override
@@ -1092,16 +1198,20 @@ public class OpenPolicyAgentAccessController
   public void preSetUserQuota(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String userName,
-      final GlobalQuotaSettings quotas) {
-    LOG.debug("preSetUserQuota not implemented!");
+      final GlobalQuotaSettings quotas)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "setUserQuota", Action.ADMIN);
   }
 
   @Override
   public void preSetRegionServerQuota(
       ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String regionServer,
-      GlobalQuotaSettings quotas) {
-    LOG.debug("preSetRegionServerQuota not implemented!");
+      GlobalQuotaSettings quotas)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "setRegionServerQuota", Action.ADMIN);
   }
 
   @Override
@@ -1111,81 +1221,111 @@ public class OpenPolicyAgentAccessController
   }
 
   @Override
-  public void preReplicateLogEntries(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    LOG.debug("preReplicateLogEntries not implemented!");
+  public void preReplicateLogEntries(ObserverContext<RegionServerCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "replicateLogEntries", Action.WRITE);
   }
 
   @Override
-  public void preClearCompactionQueues(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    LOG.debug("preClearCompactionQueues not implemented!");
+  public void preClearCompactionQueues(ObserverContext<RegionServerCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "clearCompactionQueues", Action.ADMIN);
   }
 
   @Override
   public void preAddReplicationPeer(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       String peerId,
-      ReplicationPeerConfig peerConfig) {
-    LOG.debug("preAddReplicationPeer not implemented!");
+      ReplicationPeerConfig peerConfig)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "addReplicationPeer", Action.ADMIN);
   }
 
   @Override
   public void preRemoveReplicationPeer(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) {
-    LOG.debug("preRemoveReplicationPeer not implemented!");
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "removeReplicationPeer", Action.ADMIN);
   }
 
   @Override
   public void preEnableReplicationPeer(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) {
-    LOG.debug("preEnableReplicationPeer not implemented!");
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "enableReplicationPeer", Action.ADMIN);
   }
 
   @Override
   public void preDisableReplicationPeer(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) {
-    LOG.debug("preDisableReplicationPeer not implemented!");
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "disableReplicationPeer",
+        Action.ADMIN);
   }
 
   @Override
   public void preGetReplicationPeerConfig(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) {
-    LOG.debug("preGetReplicationPeerConfig not implemented!");
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "getReplicationPeerConfig",
+        Action.ADMIN);
   }
 
   @Override
   public void preUpdateReplicationPeerConfig(
       final ObserverContext<MasterCoprocessorEnvironment> ctx,
       String peerId,
-      ReplicationPeerConfig peerConfig) {
-    LOG.debug("preUpdateReplicationPeerConfig not implemented!");
+      ReplicationPeerConfig peerConfig)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "updateReplicationPeerConfig",
+        Action.ADMIN);
   }
 
   @Override
   public void preListReplicationPeers(
-      final ObserverContext<MasterCoprocessorEnvironment> ctx, String regex) {
-    LOG.debug("preListReplicationPeers not implemented!");
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String regex) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "listReplicationPeers", Action.ADMIN);
   }
 
   @Override
   public void preExecuteProcedures(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    LOG.debug("preExecuteProcedures not implemented!");
+    // Not implemented: reference AC uses checkSystemOrSuperUser, a superuser mechanism
+    // not applicable to OPA-based authorization.
   }
 
   @Override
   public void preSwitchRpcThrottle(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, boolean enable) {
-    LOG.debug("preSwitchRpcThrottle not implemented!");
+      ObserverContext<MasterCoprocessorEnvironment> ctx, boolean enable) throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "switchRpcThrottle", Action.ADMIN);
   }
 
   @Override
-  public void preIsRpcThrottleEnabled(ObserverContext<MasterCoprocessorEnvironment> ctx) {
-    LOG.debug("preIsRpcThrottleEnabled not implemented!");
+  public void preIsRpcThrottleEnabled(ObserverContext<MasterCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "isRpcThrottleEnabled", Action.ADMIN);
   }
 
   @Override
   public void preSwitchExceedThrottleQuota(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, boolean enable) {
-    LOG.debug("preSwitchExceedThrottleQuota not implemented!");
+      ObserverContext<MasterCoprocessorEnvironment> ctx, boolean enable) throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "switchExceedThrottleQuota",
+        Action.ADMIN);
   }
 
   @Override
@@ -1193,13 +1333,13 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> ctx,
       UserPermission userPermission,
       boolean mergeExistingPermissions) {
-    LOG.debug("preGrant not implemented!");
+    // Not implemented: permissions are managed in OPA, not via HBase ACL table operations.
   }
 
   @Override
   public void preRevoke(
       ObserverContext<MasterCoprocessorEnvironment> ctx, UserPermission userPermission) {
-    LOG.debug("preRevoke not implemented!");
+    // Not implemented: permissions are managed in OPA, not via HBase ACL table operations.
   }
 
   @Override
@@ -1207,23 +1347,35 @@ public class OpenPolicyAgentAccessController
       ObserverContext<MasterCoprocessorEnvironment> ctx,
       String userName,
       List<Permission> permissions) {
-    LOG.debug("preHasUserPermissions not implemented!");
+    // Not implemented: permission checks are routed to OPA directly.
   }
 
   @Override
-  public void preClearRegionBlockCache(ObserverContext<RegionServerCoprocessorEnvironment> ctx) {
-    LOG.debug("preClearRegionBlockCache not implemented!");
+  public void preClearRegionBlockCache(ObserverContext<RegionServerCoprocessorEnvironment> ctx)
+      throws IOException {
+    requirePermission(
+        ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "clearRegionBlockCache", Action.ADMIN);
   }
 
   @Override
   public void preUpdateRegionServerConfiguration(
-      ObserverContext<RegionServerCoprocessorEnvironment> ctx, Configuration preReloadConf) {
-    LOG.debug("preUpdateRegionServerConfiguration not implemented!");
+      ObserverContext<RegionServerCoprocessorEnvironment> ctx, Configuration preReloadConf)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "updateRegionServerConfiguration",
+        Action.ADMIN);
   }
 
   @Override
   public void preUpdateMasterConfiguration(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, Configuration preReloadConf) {
-    LOG.debug("preUpdateMasterConfiguration not implemented!");
+      ObserverContext<MasterCoprocessorEnvironment> ctx, Configuration preReloadConf)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "updateMasterConfiguration",
+        Action.ADMIN);
   }
 }

@@ -1,5 +1,9 @@
 package tech.stackable.hbase;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.apache.hadoop.hbase.AuthUtil.toGroupEntry;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.*;
 import static org.junit.Assert.*;
@@ -26,6 +30,7 @@ import org.apache.hadoop.hbase.regionserver.RegionServerCoprocessorHost;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.*;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +63,9 @@ public class TestUtils {
   protected static final String GROUP_CREATE = "group_create";
   protected static final String GROUP_READ = "group_read";
   protected static final String GROUP_WRITE = "group_write";
+
+  protected static User ALLOWED_USER;
+  protected static User DENIED_USER;
 
   protected static User USER_GROUP_ADMIN;
   protected static User USER_GROUP_CREATE;
@@ -158,6 +166,9 @@ public class TestUtils {
         User.createUserForTesting(conf, "user_group_write", new String[] {GROUP_WRITE});
 
     systemUserConnection = TEST_UTIL.getConnection();
+
+    ALLOWED_USER = User.createUserForTesting(conf, "allowedUser", new String[0]);
+    DENIED_USER = User.createUserForTesting(conf, "deniedUser", new String[0]);
   }
 
   protected static void setUpTables() throws Exception {
@@ -230,6 +241,24 @@ public class TestUtils {
       fail("error during call of AccessControlClient.getUserPermissions.");
     }
     assertEquals(5, size);
+  }
+
+  protected static void logOk(AccessControlException e) {
+    LOG.info("AccessControlException as expected: [{}]", e.getMessage());
+  }
+
+  protected void assertAllowedThenDenied(SecureTestUtil.AccessTestAction action) throws Exception {
+    ALLOWED_USER.runAs(action);
+    stubFor(
+        post("/")
+            .withRequestBody(matchingJsonPath("$.input.callerUgi[?(@.userName == 'deniedUser')]"))
+            .willReturn(ok().withBody("{\"result\": \"false\"}")));
+    try {
+      DENIED_USER.runAs(action);
+      fail("AccessControlException should have been thrown");
+    } catch (AccessControlException e) {
+      logOk(e);
+    }
   }
 
   protected static void tearDown() throws Exception {
@@ -536,5 +565,14 @@ public class TestUtils {
     htd.addFamily(hcd);
     htd.setOwner(USER_OWNER);
     createTable(TEST_UTIL, TEST_UTIL.getAdmin(), htd, new byte[][] {Bytes.toBytes("s")});
+  }
+
+  protected static HTableDescriptor getHTableDescriptor() {
+    HTableDescriptor htd = new HTableDescriptor(TEST_TABLE);
+    HColumnDescriptor hcd = new HColumnDescriptor(TEST_FAMILY);
+    hcd.setMaxVersions(100);
+    htd.addFamily(hcd);
+    htd.setOwner(USER_OWNER);
+    return htd;
   }
 }

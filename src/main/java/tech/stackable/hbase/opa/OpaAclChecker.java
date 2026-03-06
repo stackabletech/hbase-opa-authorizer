@@ -80,11 +80,18 @@ public class OpaAclChecker {
     }
   }
 
-  public void checkPermissionInfo(User user, TableName table, Permission.Action action)
+  private void checkPermissionInfo(User user, TableName table, Permission.Action action)
       throws AccessControlException {
     OpaAllowQuery query =
         new OpaAllowQuery(new OpaAllowQuery.OpaAllowQueryInput(user.getUGI(), table, action));
     this.checkPermissionInfo(query);
+  }
+
+  public void checkPermissionInfo(User user, TableName table, Permission.Action... actions)
+      throws AccessControlException {
+    for (Permission.Action action : actions) {
+      checkPermissionInfo(user, table, action);
+    }
   }
 
   public void checkPermissionInfo(User user, String namespace, Permission.Action action)
