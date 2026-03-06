@@ -72,6 +72,7 @@ import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.security.AccessControlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tech.stackable.hbase.opa.OpType;
 import tech.stackable.hbase.opa.OpaAclChecker;
 
 public class OpenPolicyAgentAccessController
@@ -263,7 +264,7 @@ public class OpenPolicyAgentAccessController
     if (TableName.META_TABLE_NAME.equals(tableName)) {
       return;
     }
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.READ);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.READ, OpType.GET);
   }
 
   @Override
@@ -277,8 +278,7 @@ public class OpenPolicyAgentAccessController
       return exists;
     }
     LOG.trace("preExists: user [{}] on table [{}] with get [{}]", user, tableName, get);
-
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.READ);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.READ, OpType.EXISTS);
     return exists;
   }
 
@@ -292,8 +292,7 @@ public class OpenPolicyAgentAccessController
       return;
     }
     LOG.trace("preScannerOpen: user [{}] on table [{}] with scan [{}]", user, tableName, scan);
-
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.READ);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.READ, OpType.SCAN);
   }
 
   @Override
@@ -373,8 +372,7 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("prePut: user [{}] on table [{}] with put [{}]", user, tableName, put);
-
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.PUT);
   }
 
   @Override
@@ -387,10 +385,7 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preDelete: user [{}] on table [{}] with delete [{}]", user, tableName, delete);
-
-    // the default access controller uses a second enum - OpType - to distinguish between
-    // different types of write action (e.g. write, delete)
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.DELETE);
   }
 
   @Override
@@ -408,8 +403,7 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preAppend: user [{}] on table [{}] with append [{}]", user, tableName, append);
-
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.APPEND);
 
     // as per default access controller
     return null;
@@ -567,7 +561,8 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preCheckAndPut: user [{}] on table [{}] for put [{}]", user, tableName, put);
-    requirePermission(ctx, "checkAndPut", tableName, null, null, Action.READ, Action.WRITE);
+    requirePermission(
+        ctx, "checkAndPut", tableName, null, null, OpType.CHECK_AND_PUT, Action.READ, Action.WRITE);
     return result;
   }
 
@@ -586,7 +581,8 @@ public class OpenPolicyAgentAccessController
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndPutAfterRowLock: user [{}] on table [{}] for put [{}]", user, tableName, put);
-    requirePermission(ctx, "checkAndPut", tableName, null, null, Action.READ, Action.WRITE);
+    requirePermission(
+        ctx, "checkAndPut", tableName, null, null, OpType.CHECK_AND_PUT, Action.READ, Action.WRITE);
     return result;
   }
 
@@ -605,7 +601,15 @@ public class OpenPolicyAgentAccessController
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndDelete: user [{}] on table [{}] for delete [{}]", user, tableName, delete);
-    requirePermission(ctx, "checkAndDelete", tableName, null, null, Action.READ, Action.WRITE);
+    requirePermission(
+        ctx,
+        "checkAndDelete",
+        tableName,
+        null,
+        null,
+        OpType.CHECK_AND_DELETE,
+        Action.READ,
+        Action.WRITE);
     return result;
   }
 
@@ -627,7 +631,15 @@ public class OpenPolicyAgentAccessController
         user,
         tableName,
         delete);
-    requirePermission(ctx, "checkAndDelete", tableName, null, null, Action.READ, Action.WRITE);
+    requirePermission(
+        ctx,
+        "checkAndDelete",
+        tableName,
+        null,
+        null,
+        OpType.CHECK_AND_DELETE,
+        Action.READ,
+        Action.WRITE);
     return result;
   }
 
@@ -684,7 +696,7 @@ public class OpenPolicyAgentAccessController
     User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preIncrement: user [{}] on table [{}]", user, tableName);
-    opaAclChecker.checkPermissionInfo(user, tableName, Action.WRITE);
+    opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.INCREMENT);
     // as per default controller
     return null;
   }
@@ -1035,6 +1047,18 @@ public class OpenPolicyAgentAccessController
       byte[] qualifier,
       Action... permissions)
       throws IOException {
+    requirePermission(ctx, request, tableName, family, qualifier, OpType.NONE, permissions);
+  }
+
+  private void requirePermission(
+      ObserverContext<?> ctx,
+      String request,
+      TableName tableName,
+      byte[] family,
+      byte[] qualifier,
+      OpType opType,
+      Action... permissions)
+      throws IOException {
     User user = getActiveUser(ctx);
     AccessControlException[] last = {null};
     boolean allowed =
@@ -1047,7 +1071,7 @@ public class OpenPolicyAgentAccessController
                       tableName,
                       perm);
                   try {
-                    opaAclChecker.checkPermissionInfo(user, tableName, perm);
+                    opaAclChecker.checkPermissionInfoWithOp(user, tableName, perm, opType);
                     return true;
                   } catch (AccessControlException e) {
                     last[0] = e;

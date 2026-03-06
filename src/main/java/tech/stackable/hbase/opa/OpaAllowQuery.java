@@ -16,22 +16,28 @@ public class OpaAllowQuery {
     public final TableName table;
     public final String namespace;
     public final Permission.Action action;
+    public final OpType operation;
 
     public OpaAllowQueryInput(UserGroupInformation ugi, TableName table, Permission.Action action) {
-      this.callerUgi = new OpaQueryUgi(ugi);
+      this(ugi, table, action, null);
+    }
 
+    public OpaAllowQueryInput(
+        UserGroupInformation ugi, TableName table, Permission.Action action, OpType operation) {
+      this.callerUgi = new OpaQueryUgi(ugi);
       this.table = table;
       this.action = action;
       this.namespace = table.getNamespaceAsString();
+      this.operation = operation;
     }
 
     public OpaAllowQueryInput(
         UserGroupInformation ugi, String namespace, Permission.Action action) {
       this.callerUgi = new OpaQueryUgi(ugi);
-
       this.table = null;
       this.action = action;
       this.namespace = namespace;
+      this.operation = OpType.NONE;
     }
   }
 }
