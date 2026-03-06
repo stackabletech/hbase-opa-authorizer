@@ -162,12 +162,15 @@ git commit -m "Add OpaFixtureWriter for capturing WireMock OPA fixtures"
 **Step 1: Add `flush()` call to `TestUtils.tearDown()`**
 
 In `TestUtils.java`, change:
+
 ```java
 protected static void tearDown() throws Exception {
   TEST_UTIL.shutdownMiniCluster();
 }
 ```
+
 to:
+
 ```java
 protected static void tearDown() throws Exception {
   OpaFixtureWriter.flush();
@@ -180,11 +183,14 @@ protected static void tearDown() throws Exception {
 In each of the three test classes, find the `@BeforeClass` / `setUpClass` method and add the listener registration as the FIRST line. The `WireMockRule` is a `@ClassRule`, so it is already started by the time `@BeforeClass` runs.
 
 `TestOpenPolicyAgentAccessController.java` — `setUpClass` currently starts with:
+
 ```java
 stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
 setup(OpenPolicyAgentAccessController.class, false, OPA_URL);
 ```
+
 Change to:
+
 ```java
 wireMockRule.addMockServiceRequestListener(OpaFixtureWriter::capture);
 stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
@@ -196,9 +202,11 @@ Apply the same one-line addition (`wireMockRule.addMockServiceRequestListener(Op
 - `TestOpenPolicyAgentAccessControllerVariants.java`
 
 Add the import to each class that needs it:
+
 ```java
 import com.github.tomakehurst.wiremock.http.RequestListener;
 ```
+
 (The method reference `OpaFixtureWriter::capture` satisfies the `RequestListener` functional interface.)
 
 **Step 3: Run spotless and the full test suite**
@@ -264,10 +272,13 @@ tail -n +10 /home/andrew/gitrepos/hbase-operator/tests/templates/kuttl/opa/12-re
 ```
 
 Verify the first few lines look like valid Rego (no YAML, no leading spaces):
+
 ```bash
 head -5 src/test/rego/hbase.rego
 ```
+
 Expected:
+
 ```
 package hbase
 
@@ -276,6 +287,7 @@ default matches_identity(identity) := false
 ```
 
 Add a comment at the top of the file noting its origin. Edit `src/test/rego/hbase.rego` to prepend:
+
 ```rego
 # Derived from hbase-operator/tests/templates/kuttl/opa/12-rego-rules.txt.j2
 # with $NAMESPACE replaced by "test-ns". Regenerate with:
@@ -329,11 +341,13 @@ git commit -m "Add Rego policy file and OPA test suite"
 **Step 1: Add `opa.version` property and OS profiles to `pom.xml`**
 
 In the `<properties>` section, add:
+
 ```xml
 <opa.version>0.63.0</opa.version>
 ```
 
 After the closing `</dependencies>` tag and before `<build>`, add Maven profiles for OS detection:
+
 ```xml
 <profiles>
   <profile>
@@ -429,6 +443,7 @@ Note: `opa test` runs in the `verify` phase, which is AFTER the `test` phase (wh
 **Step 4: Add OPA binary to `.gitignore`**
 
 Append to `.gitignore`:
+
 ```
 /target/opa
 ```
@@ -459,6 +474,7 @@ JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 mvn verify 2>&1 | grep -E 'Tests ru
 ```
 
 Expected output includes:
+
 ```
 Tests run: 87, Failures: 0, Errors: 0, Skipped: 1
 data.hbase_test.test_all_allowed_inputs: PASS (...)
@@ -504,3 +520,4 @@ tail -n +10 /home/andrew/gitrepos/hbase-operator/tests/templates/kuttl/opa/12-re
   >> /tmp/hbase_new.rego
 # Prepend the comment header, review diff, then replace src/test/rego/hbase.rego
 ```
+

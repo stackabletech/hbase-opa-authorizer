@@ -35,16 +35,17 @@ Pass / Fail
 
 **`OpaFixtureWriter`** — new test-only class:
 - Thread-safe list accumulates `(requestBody, responseBody)` pairs via a `ServeEventListener`
-  registered on `WireMockRule` in `TestUtils`
+registered on `WireMockRule` in `TestUtils`
 - `flush(Path fixtureDir)` called from `TestUtils.tearDown()`:
-  1. Remaps `callerUgi.userName` in raw JSON via string replacement:
-     - `allowedUser` → `admin/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL`
-     - `deniedUser`  → `unknown@CLUSTER.LOCAL`
-  2. Parses response body to determine `allowed/` vs `denied/` subdirectory
-  3. Deduplicates — identical post-remap JSON written only once
-  4. Writes files as `{index:04d}.json`
+1. Remaps `callerUgi.userName` in raw JSON via string replacement:
+- `allowedUser` → `admin/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL`
+- `deniedUser`  → `unknown@CLUSTER.LOCAL`
+2. Parses response body to determine `allowed/` vs `denied/` subdirectory
+3. Deduplicates — identical post-remap JSON written only once
+4. Writes files as `{index:04d}.json`
 
 Constants in `TestUtils`:
+
 ```java
 static final String OPA_REMAP_ALLOWED = "admin/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL";
 static final String OPA_REMAP_DENIED  = "unknown@CLUSTER.LOCAL";
@@ -56,6 +57,7 @@ a `git diff` on the fixtures directory reveals any change in payload shape.
 ### 2. OPA Test File (static, committed)
 
 **`src/test/rego/hbase_test.rego`**:
+
 ```rego
 package hbase_test
 
@@ -100,12 +102,14 @@ Three plugin executions, all test-scoped:
 - OS/arch selected via Maven profiles: `linux_amd64`, `darwin_amd64`, `darwin_arm64`
 
 **Phase `test`** — `exec-maven-plugin` (after Surefire):
+
 ```bash
 target/opa test \
   target/generated-test-resources/rego/hbase.rego \
   src/test/rego/hbase_test.rego \
   --data src/test/rego/fixtures/
 ```
+
 - Skipped when `maven.test.skip=true`
 - Fails the build on any OPA test failure
 
@@ -124,11 +128,12 @@ with realistic principals.
 
 ## Files Changed
 
-| File | Action |
-|------|--------|
-| `src/test/java/tech/stackable/hbase/TestUtils.java` | Add `ServeEventListener`, call `OpaFixtureWriter.flush()` |
-| `src/test/java/tech/stackable/hbase/OpaFixtureWriter.java` | New class |
-| `src/test/rego/hbase_test.rego` | New file (committed) |
-| `src/test/rego/fixtures/` | New directory (committed, regenerated) |
-| `pom.xml` | Add `download-maven-plugin`, two `exec-maven-plugin` executions, OS profiles, `opa.version` property |
-| `.gitignore` | Add `target/generated-test-resources/` |
+|                            File                            |                                                Action                                                |
+|------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `src/test/java/tech/stackable/hbase/TestUtils.java`        | Add `ServeEventListener`, call `OpaFixtureWriter.flush()`                                            |
+| `src/test/java/tech/stackable/hbase/OpaFixtureWriter.java` | New class                                                                                            |
+| `src/test/rego/hbase_test.rego`                            | New file (committed)                                                                                 |
+| `src/test/rego/fixtures/`                                  | New directory (committed, regenerated)                                                               |
+| `pom.xml`                                                  | Add `download-maven-plugin`, two `exec-maven-plugin` executions, OS profiles, `opa.version` property |
+| `.gitignore`                                               | Add `target/generated-test-resources/`                                                               |
+

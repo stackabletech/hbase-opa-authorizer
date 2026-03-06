@@ -76,7 +76,9 @@ public class OpaFixtureWriter {
       String requestBody = pair[0];
       String responseBody = pair[1];
 
-      // Only process requests that came from test users — skip cluster-internal traffic.
+      // Only capture requests from the standard allow/deny test users defined in TestUtils.
+      // Requests from other named users (e.g. Variants-specific users) and cluster-internal
+      // traffic are intentionally skipped — they are not useful for Rego policy validation.
       if (!requestBody.contains("allowedUser") && !requestBody.contains("deniedUser")) {
         continue;
       }
