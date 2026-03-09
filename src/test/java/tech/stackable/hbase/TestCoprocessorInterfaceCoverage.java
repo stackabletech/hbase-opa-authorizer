@@ -145,7 +145,7 @@ public class TestCoprocessorInterfaceCoverage {
               // --- TODO: genuine gaps that need OPA implementation ---
               // These pre-hooks are user-facing and should enforce OPA permissions, but are not yet
               // implemented. They are excluded here to keep this test focused on detecting new
-              // upstream methods; the implementation gaps are tracked separately in plan.md.
+              // upstream methods.
               //
               // Metadata listing hooks: getTableNames is covered post-hoc by postGetTableNames
               // filtering; listNamespace* hooks are not currently enforced.
