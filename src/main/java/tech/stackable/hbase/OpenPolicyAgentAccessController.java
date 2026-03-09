@@ -163,7 +163,7 @@ public class OpenPolicyAgentAccessController
   public void preCreateNamespace(
       ObserverContext<MasterCoprocessorEnvironment> ctx, NamespaceDescriptor ns)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preCreateNamespace: user [{}]", user);
     opaAclChecker.checkPermissionInfo(
         user, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, Action.ADMIN);
@@ -172,7 +172,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public void preDeleteNamespace(
       ObserverContext<MasterCoprocessorEnvironment> ctx, String namespace) throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preDeleteNamespace: user [{}]", user);
     opaAclChecker.checkPermissionInfo(
         user, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, Action.ADMIN);
@@ -182,7 +182,7 @@ public class OpenPolicyAgentAccessController
   public void preModifyNamespace(
       ObserverContext<MasterCoprocessorEnvironment> ctx, NamespaceDescriptor ns)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preModifyNamespace: user [{}]", user);
     opaAclChecker.checkPermissionInfo(
         user, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, Action.ADMIN);
@@ -191,7 +191,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public void preGetNamespaceDescriptor(
       ObserverContext<MasterCoprocessorEnvironment> ctx, String namespace) throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preGetNamespaceDescriptor: user [{}]", user);
     opaAclChecker.checkPermissionInfo(user, namespace, Action.ADMIN);
   }
@@ -207,7 +207,7 @@ public class OpenPolicyAgentAccessController
   public void preCreateTable(
       ObserverContext<MasterCoprocessorEnvironment> ctx, TableDescriptor desc, RegionInfo[] regions)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preCreateTable: user [{}]", user);
     requirePermission(
         ctx,
@@ -231,7 +231,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preDeleteTable: user [{}]", user);
     requirePermission(ctx, "deleteTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -248,7 +248,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preEnableTable: user [{}]", user);
     requirePermission(ctx, "enableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -256,7 +256,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public void preDisableTable(
       ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName) throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preDisableTable: user [{}]", user);
     requirePermission(ctx, "disableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -267,7 +267,7 @@ public class OpenPolicyAgentAccessController
       final Get get,
       final List<Cell> result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preGetOp: user [{}] on table [{}] with get [{}]", user, tableName, get);
     // All users need read access to hbase:meta table.
@@ -282,7 +282,7 @@ public class OpenPolicyAgentAccessController
   public boolean preExists(
       final ObserverContext<RegionCoprocessorEnvironment> ctx, final Get get, final boolean exists)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     // All users need read access to hbase:meta table.
     if (TableName.META_TABLE_NAME.equals(tableName)) {
@@ -297,7 +297,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public void preScannerOpen(
       final ObserverContext<RegionCoprocessorEnvironment> ctx, final Scan scan) throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     // All users need read access to hbase:meta table.
     if (TableName.META_TABLE_NAME.equals(tableName)) {
@@ -314,7 +314,7 @@ public class OpenPolicyAgentAccessController
       final Scan scan,
       final RegionScanner s)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     if (user != null && user.getShortName() != null) {
       // TODO this uses the shortName. Is it possible for the same scanner to be used by
       // different users across principals who nevertheless have the same shortName? This
@@ -333,7 +333,7 @@ public class OpenPolicyAgentAccessController
       final int limit,
       final boolean hasNext)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preScannerNext: user [{}] on table [{}] with scan [{}]", user, tableName, s);
 
@@ -345,7 +345,7 @@ public class OpenPolicyAgentAccessController
   public void preScannerClose(
       final ObserverContext<RegionCoprocessorEnvironment> ctx, final InternalScanner s)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preScannerClose: user [{}] on table [{}] with scan [{}]", user, tableName, s);
 
@@ -356,7 +356,7 @@ public class OpenPolicyAgentAccessController
   public void postScannerClose(
       final ObserverContext<RegionCoprocessorEnvironment> ctx, final InternalScanner s)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("postScannerClose: user [{}] on table [{}] with scan [{}]", user, tableName, s);
 
@@ -382,7 +382,7 @@ public class OpenPolicyAgentAccessController
       final WALEdit edit,
       final Durability durability)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("prePut: user [{}] on table [{}] with put [{}]", user, tableName, put);
     opaAclChecker.checkPermissionInfoWithOp(
@@ -396,7 +396,7 @@ public class OpenPolicyAgentAccessController
       final WALEdit edit,
       final Durability durability)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preDelete: user [{}] on table [{}] with delete [{}]", user, tableName, delete);
     opaAclChecker.checkPermissionInfoWithOp(
@@ -415,7 +415,7 @@ public class OpenPolicyAgentAccessController
   @Override
   public Result preAppend(ObserverContext<RegionCoprocessorEnvironment> ctx, Append append)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preAppend: user [{}] on table [{}] with append [{}]", user, tableName, append);
     opaAclChecker.checkPermissionInfoWithOp(
@@ -430,7 +430,7 @@ public class OpenPolicyAgentAccessController
       ObserverContext<RegionCoprocessorEnvironment> ctx,
       MiniBatchOperationInProgress<Mutation> miniBatchOp)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preBatchMutate: user [{}] on table [{}] with miniBatchOp [{}]",
@@ -443,7 +443,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preOpen(ObserverContext<RegionCoprocessorEnvironment> ctx) throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     final Region region = ctx.getEnvironment().getRegion();
     if (region == null) {
       LOG.error("NULL region from RegionCoprocessorEnvironment in preOpen()");
@@ -463,7 +463,7 @@ public class OpenPolicyAgentAccessController
   public void preTableFlush(
       final ObserverContext<MasterCoprocessorEnvironment> ctx, final TableName tableName)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preTableFlush: user [{}] on table [{}]", user, tableName);
     requirePermission(ctx, "flushTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -484,7 +484,7 @@ public class OpenPolicyAgentAccessController
       CompactionLifeCycleTracker tracker,
       CompactionRequest request)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preCompact: user [{}] on table [{}] for scanner [{}]", user, tableName, scanner);
     requirePermission(ctx, "compact", tableName, null, null, Action.ADMIN, Action.CREATE);
@@ -574,7 +574,7 @@ public class OpenPolicyAgentAccessController
       final Put put,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preCheckAndPut: user [{}] on table [{}] for put [{}]", user, tableName, put);
     requirePermission(
@@ -593,7 +593,7 @@ public class OpenPolicyAgentAccessController
       final Put put,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndPutAfterRowLock: user [{}] on table [{}] for put [{}]", user, tableName, put);
@@ -613,7 +613,7 @@ public class OpenPolicyAgentAccessController
       final Delete delete,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndDelete: user [{}] on table [{}] for delete [{}]", user, tableName, delete);
@@ -640,7 +640,7 @@ public class OpenPolicyAgentAccessController
       final Delete delete,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndDeleteAfterRowLock: user [{}] on table [{}] for delete [{}]",
@@ -667,7 +667,7 @@ public class OpenPolicyAgentAccessController
       final Put put,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preCheckAndPut: user [{}] on table [{}] for put [{}]", user, tableName, put);
     requirePermission(
@@ -683,7 +683,7 @@ public class OpenPolicyAgentAccessController
       final Put put,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndPutAfterRowLock: user [{}] on table [{}] for put [{}]", user, tableName, put);
@@ -700,7 +700,7 @@ public class OpenPolicyAgentAccessController
       final Delete delete,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndDelete: user [{}] on table [{}] for delete [{}]", user, tableName, delete);
@@ -724,7 +724,7 @@ public class OpenPolicyAgentAccessController
       final Delete delete,
       final boolean result)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace(
         "preCheckAndDeleteAfterRowLock: user [{}] on table [{}] for delete [{}]",
@@ -750,7 +750,7 @@ public class OpenPolicyAgentAccessController
       CheckAndMutateResult result)
       throws IOException {
     if (checkAndMutate.getAction() instanceof RowMutations) {
-      User user = getActiveUser(ctx);
+      final User user = getActiveUser(ctx);
       TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
       LOG.trace("preCheckAndMutate (RowMutations): user [{}] on table [{}]", user, tableName);
       opaAclChecker.checkPermissionInfoWithOp(user, tableName, Action.WRITE, OpType.ROW_MUTATIONS);
@@ -766,7 +766,7 @@ public class OpenPolicyAgentAccessController
       CheckAndMutateResult result)
       throws IOException {
     if (checkAndMutate.getAction() instanceof RowMutations) {
-      User user = getActiveUser(ctx);
+      final User user = getActiveUser(ctx);
       TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
       LOG.trace(
           "preCheckAndMutateAfterRowLock (RowMutations): user [{}] on table [{}]", user, tableName);
@@ -786,7 +786,7 @@ public class OpenPolicyAgentAccessController
   public void preTruncateTable(
       ObserverContext<MasterCoprocessorEnvironment> ctx, final TableName tableName)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preTruncateTable: user [{}] on table [{}]", user, tableName);
     requirePermission(ctx, "truncateTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -795,7 +795,7 @@ public class OpenPolicyAgentAccessController
   public void postTruncateTable(
       ObserverContext<MasterCoprocessorEnvironment> ctx, final TableName tableName)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.trace("postTruncateTable: user [{}] on table [{}]", user, tableName);
   }
 
@@ -806,7 +806,7 @@ public class OpenPolicyAgentAccessController
       TableDescriptor currentDesc,
       TableDescriptor newDesc)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preModifyTable: user [{}] on table [{}]", user, tableName);
     requirePermission(ctx, "modifyTable", tableName, null, null, Action.ADMIN, Action.CREATE);
     return currentDesc;
@@ -818,7 +818,7 @@ public class OpenPolicyAgentAccessController
       TableName tableName,
       final TableDescriptor htd)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.trace("postModifyTable: user [{}] on table [{}]", user, tableName);
   }
 
@@ -826,7 +826,7 @@ public class OpenPolicyAgentAccessController
   public Result preIncrement(
       final ObserverContext<RegionCoprocessorEnvironment> ctx, final Increment increment)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     LOG.trace("preIncrement: user [{}] on table [{}]", user, tableName);
     opaAclChecker.checkPermissionInfoWithOp(
@@ -996,7 +996,7 @@ public class OpenPolicyAgentAccessController
   public void preListSnapshot(
       ObserverContext<MasterCoprocessorEnvironment> ctx, final SnapshotDescription snapshot)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preListSnapshot: user [{}] snapshot[{}]", user, snapshot);
     requirePermission(
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "listSnapshot", Action.ADMIN);
@@ -1008,7 +1008,7 @@ public class OpenPolicyAgentAccessController
       final SnapshotDescription snapshot,
       final TableDescriptor hTableDescriptor)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     TableName tableName = hTableDescriptor.getTableName();
     LOG.debug("preCloneSnapshot: user [{}] snapshot[{}] table [{}]", user, snapshot, tableName);
     requirePermission(ctx, tableName.getNamespaceAsString(), "cloneSnapshot", Action.ADMIN);
@@ -1020,7 +1020,7 @@ public class OpenPolicyAgentAccessController
       final SnapshotDescription snapshot,
       final TableDescriptor hTableDescriptor)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preRestoreSnapshot: user [{}] snapshot[{}]", user, snapshot);
     requirePermission(
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "restoreSnapshot", Action.ADMIN);
@@ -1030,7 +1030,7 @@ public class OpenPolicyAgentAccessController
   public void preDeleteSnapshot(
       final ObserverContext<MasterCoprocessorEnvironment> ctx, final SnapshotDescription snapshot)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preDeleteSnapshot: user [{}] snapshot[{}]", user, snapshot);
     requirePermission(
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "deleteSnapshot", Action.ADMIN);
@@ -1049,8 +1049,8 @@ public class OpenPolicyAgentAccessController
   public void preBulkLoadHFile(
       ObserverContext<RegionCoprocessorEnvironment> ctx, List<Pair<byte[], String>> familyPaths)
       throws IOException {
-    User user = getActiveUser(ctx);
-    var tableName = ctx.getEnvironment().getRegion().getTableDescriptor().getTableName();
+    final User user = getActiveUser(ctx);
+    final var tableName = ctx.getEnvironment().getRegion().getTableDescriptor().getTableName();
     LOG.debug("preBulkLoadHFile: user [{}] on table [{}]", user, tableName);
     requirePermission(ctx, "preBulkLoadHFile", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -1137,7 +1137,7 @@ public class OpenPolicyAgentAccessController
       byte[] family,
       byte[] qualifier)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     if (tableName != null) {
       LOG.debug("preGetUserPermissions: user [{}] on table [{}]", user, tableName);
       requirePermission(ctx, "getUserPermissions", tableName, family, qualifier, Action.ADMIN);
@@ -1195,7 +1195,7 @@ public class OpenPolicyAgentAccessController
   private void requirePermission(
       final ObserverContext<?> ctx, final String namespace, String request, Action... permissions)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     AccessControlException[] last = {null};
     boolean allowed =
         Arrays.stream(permissions)
@@ -1238,7 +1238,7 @@ public class OpenPolicyAgentAccessController
       OpType opType,
       Action... permissions)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     AccessControlException[] last = {null};
     boolean allowed =
         Arrays.stream(permissions)
@@ -1345,7 +1345,7 @@ public class OpenPolicyAgentAccessController
     // Skip EXEC check for calls to the AccessControlService itself to avoid recursive checks.
     if (!(service instanceof AccessControlProtos.AccessControlService)) {
       TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
-      User user = getActiveUser(ctx);
+      final User user = getActiveUser(ctx);
       LOG.debug(
           "preEndpointInvocation: user [{}] on table [{}] method [{}]",
           user,
@@ -1380,7 +1380,7 @@ public class OpenPolicyAgentAccessController
       RegionInfo[] regionInfos,
       String description)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preRequestLock: user [{}] namespace [{}] table [{}]", user, namespace, tableName);
     if (namespace != null && !namespace.isEmpty()) {
       requirePermission(ctx, namespace, "requestLock", Action.ADMIN, Action.CREATE);
@@ -1394,7 +1394,7 @@ public class OpenPolicyAgentAccessController
   public void preLockHeartbeat(
       ObserverContext<MasterCoprocessorEnvironment> ctx, TableName tableName, String description)
       throws IOException {
-    User user = getActiveUser(ctx);
+    final User user = getActiveUser(ctx);
     LOG.debug("preLockHeartbeat: user [{}] table [{}]", user, tableName);
     requirePermission(ctx, "lockHeartbeat", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
