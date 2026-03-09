@@ -375,6 +375,48 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
         });
   }
 
+  // --- OPA fixture coverage: readonlyUser principal ---
+  // These tests generate fixtures for the readonlyuser Kerberos principal (which has an ACL with
+  // operations and families restrictions in the Rego policy), exercising the matches_operation and
+  // matches_families non-null branches that the allowedUser/deniedUser fixtures never reach.
+
+  @Test
+  public void testReadonlyUserScanAllowed() throws Exception {
+    assertReadonlyUserAllowed(
+        () -> {
+          getRegionController().preScannerOpen(regionCtx(), new Scan());
+          return null;
+        });
+  }
+
+  @Test
+  public void testReadonlyUserGetAllowed() throws Exception {
+    assertReadonlyUserAllowed(
+        () -> {
+          getRegionController().preGetOp(regionCtx(), new Get(TEST_ROW), null);
+          return null;
+        });
+  }
+
+  @Test
+  public void testReadonlyUserExistsAllowed() throws Exception {
+    assertReadonlyUserAllowed(
+        () -> {
+          getRegionController().preExists(regionCtx(), new Get(TEST_ROW), false);
+          return null;
+        });
+  }
+
+  @Test
+  public void testReadonlyUserPutDenied() throws Exception {
+    assertReadonlyUserDenied(
+        () -> {
+          getRegionController()
+              .prePut(regionCtx(), new Put(TEST_ROW), null, Durability.USE_DEFAULT);
+          return null;
+        });
+  }
+
   // --- RegionServer hooks ---
 
   private OpenPolicyAgentAccessController getRsController() {

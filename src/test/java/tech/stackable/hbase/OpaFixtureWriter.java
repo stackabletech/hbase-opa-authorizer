@@ -21,6 +21,9 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>{@code allowedUser} → admin Kerberos principal (member of "admins" group in Rego)
  *   <li>{@code deniedUser} → unknown principal (not in any Rego group)
+ *   <li>{@code readonlyUser} → readonlyuser Kerberos principal (ro ACL with operation/family
+ *       restrictions in Rego; exercises the {@code matches_operation} and {@code matches_families}
+ *       non-null branches)
  * </ul>
  */
 public class OpaFixtureWriter {
@@ -28,6 +31,8 @@ public class OpaFixtureWriter {
   static final String OPA_REMAP_ALLOWED =
       "admin/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL";
   static final String OPA_REMAP_DENIED = "unknown@CLUSTER.LOCAL";
+  static final String OPA_REMAP_READONLY =
+      "readonlyuser/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL";
 
   private static final Path FIXTURES_FILE = Paths.get("target/test-rego/fixtures.json");
 
@@ -68,13 +73,16 @@ public class OpaFixtureWriter {
         // Only capture requests from the standard allow/deny test users defined in TestUtils.
         // Requests from other named users (e.g. Variants-specific users) and cluster-internal
         // traffic are intentionally skipped — they are not useful for Rego policy validation.
-        if (!requestBody.contains("allowedUser") && !requestBody.contains("deniedUser")) {
+        if (!requestBody.contains("allowedUser")
+            && !requestBody.contains("deniedUser")
+            && !requestBody.contains("readonlyUser")) {
           continue;
         }
         String remapped =
             requestBody
                 .replace("allowedUser", OPA_REMAP_ALLOWED)
-                .replace("deniedUser", OPA_REMAP_DENIED);
+                .replace("deniedUser", OPA_REMAP_DENIED)
+                .replace("readonlyUser", OPA_REMAP_READONLY);
 
         // WireMock stubs in this test suite always return {"result": "true"} or {"result":
         // "false"}.

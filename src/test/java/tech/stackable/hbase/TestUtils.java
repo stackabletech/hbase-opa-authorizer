@@ -66,6 +66,7 @@ public class TestUtils {
 
   protected static User ALLOWED_USER;
   protected static User DENIED_USER;
+  protected static User READONLY_USER;
 
   protected static User USER_GROUP_ADMIN;
   protected static User USER_GROUP_CREATE;
@@ -169,6 +170,7 @@ public class TestUtils {
 
     ALLOWED_USER = User.createUserForTesting(conf, "allowedUser", new String[0]);
     DENIED_USER = User.createUserForTesting(conf, "deniedUser", new String[0]);
+    READONLY_USER = User.createUserForTesting(conf, "readonlyUser", new String[0]);
   }
 
   protected static void setUpTables() throws Exception {
@@ -245,6 +247,24 @@ public class TestUtils {
 
   protected static void logOk(AccessControlException e) {
     LOG.info("AccessControlException as expected: [{}]", e.getMessage());
+  }
+
+  protected void assertReadonlyUserAllowed(SecureTestUtil.AccessTestAction action)
+      throws Exception {
+    READONLY_USER.runAs(action);
+  }
+
+  protected void assertReadonlyUserDenied(SecureTestUtil.AccessTestAction action) throws Exception {
+    stubFor(
+        post("/")
+            .withRequestBody(matchingJsonPath("$.input.callerUgi[?(@.userName == 'readonlyUser')]"))
+            .willReturn(ok().withBody("{\"result\": \"false\"}")));
+    try {
+      READONLY_USER.runAs(action);
+      fail("AccessControlException should have been thrown");
+    } catch (AccessControlException e) {
+      logOk(e);
+    }
   }
 
   protected void assertAllowedThenDenied(SecureTestUtil.AccessTestAction action) throws Exception {
