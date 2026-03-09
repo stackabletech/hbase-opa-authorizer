@@ -1342,7 +1342,12 @@ public class OpenPolicyAgentAccessController
       String methodName,
       Message request)
       throws IOException {
-    // Skip EXEC check for calls to the AccessControlService itself to avoid recursive checks.
+    // AccessControlService is the HBase ACL management RPC service (grant, revoke, etc.).
+    // Clients will not call it when permissions are managed in OPA rather than the HBase ACL
+    // table, so this branch is dead code in practice. The guard is retained from the reference
+    // AccessController, where omitting it would cause infinite recursion: the controller
+    // implements AccessControlService itself, so an EXEC check on an incoming ACL call would
+    // re-enter preEndpointInvocation.
     if (!(service instanceof AccessControlProtos.AccessControlService)) {
       TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
       final User user = getActiveUser(ctx);
