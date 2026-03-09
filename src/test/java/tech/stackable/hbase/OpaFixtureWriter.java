@@ -10,11 +10,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
- * Captures WireMock OPA requests during unit tests and writes them as fixture JSON files for
- * offline {@code opa test} validation.
+ * Captures WireMock OPA requests during unit tests and writes them as a single {@code
+ * fixtures.json} file for offline {@code opa test} validation.
  *
  * <p>Usernames are remapped so fixtures exercise real Rego policy logic:
  *
@@ -29,20 +29,15 @@ public class OpaFixtureWriter {
       "admin/access-hbase.test-ns.svc.cluster.local@CLUSTER.LOCAL";
   static final String OPA_REMAP_DENIED = "unknown@CLUSTER.LOCAL";
 
-  private static final Path FIXTURES_BASE = Paths.get("src/test/rego/fixtures");
-  private static final Path ALLOWED_DIR = FIXTURES_BASE.resolve("allowed");
-  private static final Path DENIED_DIR = FIXTURES_BASE.resolve("denied");
+  private static final Path FIXTURES_FILE = Paths.get("target/test-rego/fixtures.json");
 
   /** All captured (requestBody, responseBody) pairs across all test classes in this JVM run. */
   private static final List<String[]> captured = new ArrayList<>();
 
-  /** Tracks whether we have cleared old fixture files yet in this JVM run. */
-  private static final AtomicBoolean clearedOnce = new AtomicBoolean(false);
+  /** Accumulated fixture bodies, shared across all flush() calls in one JVM run. */
+  private static final List<String> allowedFixtures = new ArrayList<>();
 
-  /** Sequential file counters, shared across all flush() calls in one JVM run. */
-  private static int allowedIdx = 0;
-
-  private static int deniedIdx = 0;
+  private static final List<String> deniedFixtures = new ArrayList<>();
 
   /** Deduplication sets, shared across all flush() calls in one JVM run. */
   private static final Set<String> seenAllowed = new HashSet<>();
@@ -55,65 +50,55 @@ public class OpaFixtureWriter {
   }
 
   /**
-   * Remaps captured requests, deduplicates, and writes fixture JSON files. Called from {@link
-   * TestUtils#tearDown()} at the end of each test class.
+   * Remaps captured requests, deduplicates, and writes {@code src/test/rego/fixtures.json}. Called
+   * from {@link TestUtils#tearDown()} at the end of each test class.
    */
   public static void flush() throws IOException {
-    if (clearedOnce.compareAndSet(false, true)) {
-      deleteDir(ALLOWED_DIR);
-      deleteDir(DENIED_DIR);
-    }
-    Files.createDirectories(ALLOWED_DIR);
-    Files.createDirectories(DENIED_DIR);
-
     List<String[]> toProcess;
     synchronized (OpaFixtureWriter.class) {
       toProcess = new ArrayList<>(captured);
       captured.clear();
     }
 
-    for (String[] pair : toProcess) {
-      String requestBody = pair[0];
-      String responseBody = pair[1];
+    synchronized (OpaFixtureWriter.class) {
+      for (String[] pair : toProcess) {
+        String requestBody = pair[0];
+        String responseBody = pair[1];
 
-      // Only capture requests from the standard allow/deny test users defined in TestUtils.
-      // Requests from other named users (e.g. Variants-specific users) and cluster-internal
-      // traffic are intentionally skipped — they are not useful for Rego policy validation.
-      if (!requestBody.contains("allowedUser") && !requestBody.contains("deniedUser")) {
-        continue;
-      }
-      String remapped =
-          requestBody
-              .replace("allowedUser", OPA_REMAP_ALLOWED)
-              .replace("deniedUser", OPA_REMAP_DENIED);
+        // Only capture requests from the standard allow/deny test users defined in TestUtils.
+        // Requests from other named users (e.g. Variants-specific users) and cluster-internal
+        // traffic are intentionally skipped — they are not useful for Rego policy validation.
+        if (!requestBody.contains("allowedUser") && !requestBody.contains("deniedUser")) {
+          continue;
+        }
+        String remapped =
+            requestBody
+                .replace("allowedUser", OPA_REMAP_ALLOWED)
+                .replace("deniedUser", OPA_REMAP_DENIED);
 
-      // WireMock stubs in this test suite always return {"result": "true"} or {"result": "false"}.
-      boolean allowed = responseBody.contains("\"true\"");
+        // WireMock stubs in this test suite always return {"result": "true"} or {"result":
+        // "false"}.
+        boolean allowed = responseBody.contains("\"true\"");
 
-      synchronized (OpaFixtureWriter.class) {
         if (allowed) {
           if (seenAllowed.add(remapped)) {
-            Files.writeString(
-                ALLOWED_DIR.resolve(String.format("%04d.json", allowedIdx++)), remapped);
+            allowedFixtures.add(remapped);
           }
         } else {
           if (seenDenied.add(remapped)) {
-            Files.writeString(
-                DENIED_DIR.resolve(String.format("%04d.json", deniedIdx++)), remapped);
+            deniedFixtures.add(remapped);
           }
         }
       }
+
+      Files.createDirectories(FIXTURES_FILE.getParent());
+      Files.writeString(FIXTURES_FILE, buildFixturesJson());
     }
   }
 
-  private static void deleteDir(Path dir) throws IOException {
-    if (Files.exists(dir)) {
-      try (var entries = Files.list(dir)) {
-        for (Path p : entries.collect(java.util.stream.Collectors.toList())) {
-          Files.delete(p);
-        }
-      }
-      Files.delete(dir);
-    }
+  private static String buildFixturesJson() {
+    String allowed = allowedFixtures.stream().collect(Collectors.joining(","));
+    String denied = deniedFixtures.stream().collect(Collectors.joining(","));
+    return "{\"fixtures\":{\"allowed\":[" + allowed + "],\"denied\":[" + denied + "]}}";
   }
 }

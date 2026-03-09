@@ -306,12 +306,15 @@
             <goals><goal>exec</goal></goals>
             <configuration>
               <executable>${project.build.directory}/opa</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
               <arguments>
                 <argument>test</argument>
                 <argument>src/test/rego/hbase.rego</argument>
                 <argument>src/test/rego/hbase_test.rego</argument>
-                <argument>--data</argument>
-                <argument>src/test/rego/fixtures</argument>
+                <argument>target/test-rego/fixtures.json</argument>
+                <argument>--v1-compatible</argument>
+                <argument>--explain</argument>
+                <argument>notes</argument>
                 <argument>-v</argument>
               </arguments>
               <skip>${maven.test.skip}</skip>
