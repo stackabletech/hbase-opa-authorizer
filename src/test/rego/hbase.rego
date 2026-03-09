@@ -136,7 +136,7 @@ acls := [
         "action": "ro",
         "resource": "hbase:namespace:",
         # Restrict to read-only operation types; exercises matches_operation non-null branch.
-        "operations": ["exists", "get", "scan", "none"],
+        "operations": ["EXISTS", "GET", "SCAN", "NONE"],
         # Restrict to known column families; exercises matches_families non-null branch.
         "families": ["cf1"],
     },
