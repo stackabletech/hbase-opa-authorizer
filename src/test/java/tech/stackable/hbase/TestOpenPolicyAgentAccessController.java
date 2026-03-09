@@ -544,6 +544,45 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
   }
 
   @Test
+  public void testPreRequestLockTableScope() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getOpaController().preRequestLock(ctx(), null, TEST_TABLE, null, "desc");
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreRequestLockNamespaceScope() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getOpaController()
+              .preRequestLock(
+                  ctx(), NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, null, null, "desc");
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreRequestLockRegionScope() throws Exception {
+    RegionInfo ri = RegionInfoBuilder.newBuilder(TEST_TABLE).build();
+    assertAllowedThenDenied(
+        () -> {
+          getOpaController().preRequestLock(ctx(), null, null, new RegionInfo[] {ri}, "desc");
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreLockHeartbeat() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getOpaController().preLockHeartbeat(ctx(), TEST_TABLE, "desc");
+          return null;
+        });
+  }
+
+  @Test
   public void testPreSetSplitOrMergeEnabled() throws Exception {
     assertAllowedThenDenied(
         () -> {

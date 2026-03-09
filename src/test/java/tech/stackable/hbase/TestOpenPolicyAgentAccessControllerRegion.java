@@ -8,6 +8,7 @@ import static org.apache.hadoop.hbase.security.access.SecureTestUtil.deleteTable
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import java.util.Collections;
 import org.apache.hadoop.hbase.CompareOperator;
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.client.Append;
@@ -341,6 +342,35 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
     assertAllowedThenDenied(
         () -> {
           getRegionController().preCheckAndMutateAfterRowLock(regionCtx(), checkAndMutate, result);
+          return null;
+        });
+  }
+
+  // --- bulk load hooks ---
+
+  @Test
+  public void testPreBulkLoadHFile() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController().preBulkLoadHFile(regionCtx(), Collections.emptyList());
+          return null;
+        });
+  }
+
+  @Test
+  public void testPrePrepareBulkLoad() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController().prePrepareBulkLoad(regionCtx());
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreCleanupBulkLoad() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getRegionController().preCleanupBulkLoad(regionCtx());
           return null;
         });
   }
