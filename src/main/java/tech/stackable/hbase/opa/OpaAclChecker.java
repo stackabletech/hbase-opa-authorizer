@@ -83,11 +83,6 @@ public class OpaAclChecker {
     }
   }
 
-  private void checkPermissionInfo(User user, TableName table, Permission.Action action)
-      throws AccessControlException {
-    checkPermissionInfoWithOp(user, table, action, OpType.NONE);
-  }
-
   public void checkPermissionInfoWithOp(
       User user, TableName table, Permission.Action action, OpType operation)
       throws AccessControlException {
@@ -111,7 +106,7 @@ public class OpaAclChecker {
   public void checkPermissionInfo(User user, TableName table, Permission.Action... actions)
       throws AccessControlException {
     for (Permission.Action action : actions) {
-      checkPermissionInfo(user, table, action);
+      checkPermissionInfoWithOp(user, table, action, OpType.NONE);
     }
   }
 
