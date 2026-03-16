@@ -41,16 +41,16 @@
     <error-prone.version>2.27.1</error-prone.version>
     <google-java-format.version>1.19.2</google-java-format.version>
 
-    <maven-clean-plugin.version>3.3.2</maven-clean-plugin.version>
-    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
-    <maven-deploy-plugin.version>3.1.2</maven-deploy-plugin.version>
-    <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
-    <maven-install-plugin.version>3.1.2</maven-install-plugin.version>
-    <maven-jar-plugin.version>3.4.1</maven-jar-plugin.version>
-    <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+    <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
+    <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+    <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
+    <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+    <maven-install-plugin.version>3.1.4</maven-install-plugin.version>
+    <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
+    <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
     <maven-site-plugin.version>3.12.1</maven-site-plugin.version>
-    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
-    <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
+    <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+    <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
 
     <hbase.version>2.6.4</hbase.version>
     <hbase.protobuf.version>2.5.0</hbase.protobuf.version>
