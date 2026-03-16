@@ -317,7 +317,7 @@
                 <argument>notes</argument>
                 <argument>-v</argument>
               </arguments>
-              <skip>${maven.test.skip}</skip>
+              <skip>${skipTests}</skip>
             </configuration>
           </execution>
         </executions>
