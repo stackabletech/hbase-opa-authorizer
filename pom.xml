@@ -54,7 +54,7 @@
 
     <hbase.version>2.6.4</hbase.version>
     <hbase.protobuf.version>2.5.0</hbase.protobuf.version>
-    <caffeine.version>2.8.8</caffeine.version>
+    <caffeine.version>3.2.0</caffeine.version>
     <opa.version>1.12.3</opa.version>
   </properties>
 
