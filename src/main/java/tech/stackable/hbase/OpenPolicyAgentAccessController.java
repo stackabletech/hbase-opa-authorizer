@@ -7,7 +7,6 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -1196,26 +1195,22 @@ public class OpenPolicyAgentAccessController
       final ObserverContext<?> ctx, final String namespace, String request, Action... permissions)
       throws IOException {
     final User user = getActiveUser(ctx);
-    AccessControlException[] last = {null};
-    boolean allowed =
-        Arrays.stream(permissions)
-            .anyMatch(
-                perm -> {
-                  LOG.trace(
-                      "requirePermission: user [{}] namespace[{}] request [{}] permission [{}]",
-                      user,
-                      namespace,
-                      request,
-                      perm);
-                  try {
-                    opaAclChecker.checkPermissionInfo(user, namespace, perm);
-                    return true;
-                  } catch (AccessControlException e) {
-                    last[0] = e;
-                    return false;
-                  }
-                });
-    if (!allowed) throw last[0];
+    AccessControlException last = null;
+    for (Action perm : permissions) {
+      LOG.trace(
+          "requirePermission: user [{}] namespace[{}] request [{}] permission [{}]",
+          user,
+          namespace,
+          request,
+          perm);
+      try {
+        opaAclChecker.checkPermissionInfo(user, namespace, perm);
+        return;
+      } catch (AccessControlException e) {
+        last = e;
+      }
+    }
+    throw last;
   }
 
   private void requirePermission(
@@ -1239,27 +1234,23 @@ public class OpenPolicyAgentAccessController
       Action... permissions)
       throws IOException {
     final User user = getActiveUser(ctx);
-    AccessControlException[] last = {null};
-    boolean allowed =
-        Arrays.stream(permissions)
-            .anyMatch(
-                perm -> {
-                  LOG.trace(
-                      "requirePermission: user [{}] tableName[{}] request [{}] permission [{}]",
-                      user,
-                      tableName,
-                      request,
-                      perm);
-                  try {
-                    opaAclChecker.checkPermissionInfoWithOp(
-                        user, tableName, perm, opType, familyMap(family, qualifier));
-                    return true;
-                  } catch (AccessControlException e) {
-                    last[0] = e;
-                    return false;
-                  }
-                });
-    if (!allowed) throw last[0];
+    AccessControlException last = null;
+    for (Action perm : permissions) {
+      LOG.trace(
+          "requirePermission: user [{}] tableName[{}] request [{}] permission [{}]",
+          user,
+          tableName,
+          request,
+          perm);
+      try {
+        opaAclChecker.checkPermissionInfoWithOp(
+            user, tableName, perm, opType, familyMap(family, qualifier));
+        return;
+      } catch (AccessControlException e) {
+        last = e;
+      }
+    }
+    throw last;
   }
 
   @Override

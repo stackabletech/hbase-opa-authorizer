@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Captures WireMock OPA requests during unit tests and writes them as a single {@code
@@ -105,8 +104,8 @@ public class OpaFixtureWriter {
   }
 
   private static String buildFixturesJson() {
-    String allowed = allowedFixtures.stream().collect(Collectors.joining(","));
-    String denied = deniedFixtures.stream().collect(Collectors.joining(","));
+    String allowed = String.join(",", allowedFixtures);
+    String denied = String.join(",", deniedFixtures);
     return "{\"fixtures\":{\"allowed\":[" + allowed + "],\"denied\":[" + denied + "]}}";
   }
 }
