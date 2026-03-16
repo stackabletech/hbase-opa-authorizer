@@ -37,9 +37,9 @@
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <cleanthat.version>2.17</cleanthat.version>
-    <error-prone.version>2.27.1</error-prone.version>
-    <google-java-format.version>1.19.2</google-java-format.version>
+    <cleanthat.version>2.25</cleanthat.version>
+    <error-prone.version>2.31.0</error-prone.version>
+    <google-java-format.version>1.24.0</google-java-format.version>
 
     <maven-clean-plugin.version>3.5.0</maven-clean-plugin.version>
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
@@ -48,7 +48,7 @@
     <maven-install-plugin.version>3.1.4</maven-install-plugin.version>
     <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
     <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
-    <maven-site-plugin.version>3.12.1</maven-site-plugin.version>
+    <maven-site-plugin.version>3.21.0</maven-site-plugin.version>
     <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
     <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
 
