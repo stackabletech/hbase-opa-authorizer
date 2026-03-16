@@ -55,7 +55,7 @@
     <hbase.version>2.6.4</hbase.version>
     <hbase.protobuf.version>2.5.0</hbase.protobuf.version>
     <caffeine.version>2.8.8</caffeine.version>
-    <opa.version>0.63.0</opa.version>
+    <opa.version>1.12.3</opa.version>
   </properties>
 
   <dependencies>
@@ -312,7 +312,6 @@
                 <argument>src/test/rego/hbase.rego</argument>
                 <argument>src/test/rego/hbase_test.rego</argument>
                 <argument>target/test-rego/fixtures.json</argument>
-                <argument>--v1-compatible</argument>
                 <argument>--explain</argument>
                 <argument>notes</argument>
                 <argument>-v</argument>
