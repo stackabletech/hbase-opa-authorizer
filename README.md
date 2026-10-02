@@ -108,4 +108,3 @@ The following actions are currently excluded but will be included in future rele
 - RSGroup management
 - listing namespaces
 - reading cluster metrics
-
