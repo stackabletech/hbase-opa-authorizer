@@ -13,12 +13,11 @@ import static org.apache.hadoop.hbase.security.access.SecureTestUtil.revokeFromN
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.revokeFromTableUsingAccessControlClient;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.verifyAllowed;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.verifyDenied;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
-import com.google.protobuf.BlockingRpcChannel;
 import java.util.Arrays;
 import java.util.Collection;
 import org.apache.hadoop.hbase.HConstants;
@@ -27,7 +26,6 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.AccessControlClient;
@@ -35,16 +33,18 @@ import org.apache.hadoop.hbase.security.access.AccessControlUtil;
 import org.apache.hadoop.hbase.security.access.AccessController;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.PermissionStorage;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.apache.hbase.thirdparty.com.google.protobuf.BlockingRpcChannel;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 /**
  * This class copies selected test cases from the HBase code so that it is easier to step-through
- * the default co-processor code to see how it is used. It can be removed entirely once the
+ * the default coprocessor code to see how it is used. It can be removed entirely once the
  * implementation has stabilised.
  */
-@Ignore
+@Disabled
 public class TestDefaultAccessController extends TestUtils {
 
   @Test

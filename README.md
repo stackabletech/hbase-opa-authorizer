@@ -12,7 +12,8 @@ The CoProcessor is built from source and included in the Stackable Apache HBase 
 ## OPA authorizer
 
 > [!IMPORTANT]
-> The authorizer work best with product images for Apache HBase 2.6.0 (and later) as the HBase code in these versions provides more comprehensive coverage for ACL hooks.
+> Version 1.x of the authorizer is built for Apache HBase 3.0.0 and requires Java 17.
+> For Apache HBase 2.x, use the 0.3.x releases.
 
 ### Configuration
 
@@ -37,6 +38,8 @@ For every action a request similar to the one below is sent to OPA. The importan
 - the namespace
 - the table (optional: omitted when e.g. creating a namespace)
 - the action (one of `READ`, `WRITE`, `EXEC`, `CREATE`, `ADMIN`)
+- the operation type of data access requests (e.g. `GET`, `SCAN`, `PUT`, `DELETE`; `NONE` for administrative actions)
+- the column families and qualifiers being accessed (`families`, empty when the request is not restricted to specific families)
 
 ```json
 {
@@ -86,13 +89,23 @@ The following actions are subject to ACL checks:
 - creation and deletion of tables
 - enabling and disabling of tables
 - truncation and modification of tables
+- modification of store file trackers (table, column family)
 - reading data (`Get`, `Scan`)
 - writing data (`Put`, `Append`, `Delete`)
 - batch mutations
+- moving, assigning and unassigning regions
+- snapshot operations (create, list, clone, restore, delete)
+- bulk loading of HFiles
+- quotas and throttling
+- balancer
+- replication peer management (including sync replication state transitions)
+- cluster management (stopping the Master and RegionServers, shutdown, decommissioning, clearing dead servers)
+- procedures and locks
+- split and merge switches
 
 The following actions are currently excluded but will be included in future releases:
 
-- modification of store file trackers (table, column family)
-- moving, assigning and unassigning tables
-- snapshot operations (create, list, clone, restore, delete)
-- bulk loading of HFiles
+- RSGroup management
+- listing namespaces
+- reading cluster metrics
+

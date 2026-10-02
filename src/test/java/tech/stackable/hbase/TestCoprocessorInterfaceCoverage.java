@@ -1,6 +1,6 @@
 package tech.stackable.hbase;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -14,7 +14,7 @@ import org.apache.hadoop.hbase.coprocessor.EndpointObserver;
 import org.apache.hadoop.hbase.coprocessor.MasterObserver;
 import org.apache.hadoop.hbase.coprocessor.RegionObserver;
 import org.apache.hadoop.hbase.coprocessor.RegionServerObserver;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that every method in the coprocessor observer interfaces is either explicitly overridden
@@ -59,13 +59,6 @@ public class TestCoprocessorInterfaceCoverage {
               "preDelete(ObserverContext, Delete, WALEdit)",
               "preIncrement(ObserverContext, Increment, WALEdit)",
               "prePut(ObserverContext, Put, WALEdit)",
-              // Old single-descriptor overload; we override the 4-arg (old + new) variant.
-              "preModifyTable(ObserverContext, TableName, TableDescriptor)",
-              // Old 2-descriptor namespace overload; we override the 2-arg (new descriptor only)
-              // variant.
-              "preModifyNamespace(ObserverContext, NamespaceDescriptor, NamespaceDescriptor)",
-              // Old 3-arg unassign with boolean; we override the 2-arg variant.
-              "preUnassign(ObserverContext, RegionInfo, boolean)",
 
               // --- after-row-lock variants where we check at the pre-lock level ---
               // HBase calls the pre-lock hook before acquiring the row lock and the after-lock hook
@@ -135,6 +128,8 @@ public class TestCoprocessorInterfaceCoverage {
               "preGetRSGroupInfoOfServer(ObserverContext, Address)",
               "preGetRSGroupInfoOfTable(ObserverContext, TableName)",
               "preListRSGroups(ObserverContext)",
+              "preListTablesInRSGroup(ObserverContext, String)",
+              "preGetConfiguredNamespacesAndTablesInRSGroup(ObserverContext, String)",
               "preMoveServers(ObserverContext, Set, String)",
               "preMoveServersAndTables(ObserverContext, Set, Set, String)",
               "preMoveTables(ObserverContext, Set, String)",
@@ -179,10 +174,10 @@ public class TestCoprocessorInterfaceCoverage {
             .collect(Collectors.toList());
 
     assertTrue(
+        unhandled.isEmpty(),
         "Observer interface pre-hooks found that are neither overridden nor in the exclusion list"
             + " — review each and either implement it or add it to EXCLUDED with a justification:\n"
-            + String.join("\n", unhandled),
-        unhandled.isEmpty());
+            + String.join("\n", unhandled));
   }
 
   private static String signature(Method m) {
