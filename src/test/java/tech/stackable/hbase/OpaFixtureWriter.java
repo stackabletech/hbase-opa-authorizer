@@ -108,4 +108,9 @@ public class OpaFixtureWriter {
     String denied = String.join(",", deniedFixtures);
     return "{\"fixtures\":{\"allowed\":[" + allowed + "],\"denied\":[" + denied + "]}}";
   }
+
+  /** Called by {@link OpaFixtureCapture} for each served request. Thread-safe. */
+  public static synchronized void capture(String requestBody, String responseBody) {
+    captured.add(new String[] {requestBody, responseBody});
+  }
 }

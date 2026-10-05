@@ -6,7 +6,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static org.apache.hadoop.hbase.AuthUtil.toGroupEntry;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static tech.stackable.hbase.OpenPolicyAgentAccessController.OPA_POLICY_CACHE;
 import static tech.stackable.hbase.OpenPolicyAgentAccessController.OPA_POLICY_DRYRUN;
 
@@ -16,8 +18,11 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessor;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
@@ -37,7 +42,7 @@ import org.slf4j.LoggerFactory;
 
 public class TestUtils {
   protected static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
-  protected static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  protected static final HBaseTestingUtil TEST_UTIL = new HBaseTestingUtil();
   protected static Configuration conf;
   protected static Connection systemUserConnection;
 
@@ -174,12 +179,13 @@ public class TestUtils {
   }
 
   protected static void setUpTables() throws Exception {
-    HTableDescriptor htd = new HTableDescriptor(TEST_TABLE);
-    HColumnDescriptor hcd = new HColumnDescriptor(TEST_FAMILY);
-    hcd.setMaxVersions(100);
-    htd.addFamily(hcd);
-    htd.setOwner(USER_OWNER);
-    createTable(TEST_UTIL, TEST_UTIL.getAdmin(), htd, new byte[][] {Bytes.toBytes("s")});
+    TableDescriptor td =
+        TableDescriptorBuilder.newBuilder(TEST_TABLE)
+            .setColumnFamily(
+                ColumnFamilyDescriptorBuilder.newBuilder(TEST_FAMILY).setMaxVersions(100).build())
+            .build();
+
+    createTable(TEST_UTIL, TEST_UTIL.getAdmin(), td, new byte[][] {Bytes.toBytes("s")});
 
     HRegion region = TEST_UTIL.getHBaseCluster().getRegions(TEST_TABLE).get(0);
     RegionCoprocessorHost rcpHost = region.getCoprocessorHost();
@@ -580,20 +586,21 @@ public class TestUtils {
   }
 
   protected void createTestTable(TableName tname, byte[] cf) throws Exception {
-    HTableDescriptor htd = new HTableDescriptor(tname);
-    HColumnDescriptor hcd = new HColumnDescriptor(cf);
-    hcd.setMaxVersions(100);
-    htd.addFamily(hcd);
-    htd.setOwner(USER_OWNER);
-    createTable(TEST_UTIL, TEST_UTIL.getAdmin(), htd, new byte[][] {Bytes.toBytes("s")});
+    TableDescriptor td =
+        TableDescriptorBuilder.newBuilder(tname)
+            .setColumnFamily(
+                ColumnFamilyDescriptorBuilder.newBuilder(cf).setMaxVersions(100).build())
+            .build();
+
+    createTable(TEST_UTIL, TEST_UTIL.getAdmin(), td, new byte[][] {Bytes.toBytes("s")});
   }
 
-  protected static HTableDescriptor getHTableDescriptor() {
-    HTableDescriptor htd = new HTableDescriptor(TEST_TABLE);
-    HColumnDescriptor hcd = new HColumnDescriptor(TEST_FAMILY);
-    hcd.setMaxVersions(100);
-    htd.addFamily(hcd);
-    htd.setOwner(USER_OWNER);
-    return htd;
+  protected static TableDescriptor getTableDescriptor() {
+    TableDescriptor td =
+        TableDescriptorBuilder.newBuilder(TEST_TABLE)
+            .setColumnFamily(
+                ColumnFamilyDescriptorBuilder.newBuilder(TEST_FAMILY).setMaxVersions(100).build())
+            .build();
+    return td;
   }
 }

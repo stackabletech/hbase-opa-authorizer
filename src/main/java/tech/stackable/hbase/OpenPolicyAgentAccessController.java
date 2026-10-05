@@ -2,10 +2,6 @@ package tech.stackable.hbase;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.MapMaker;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.Service;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
@@ -56,7 +52,6 @@ import org.apache.hadoop.hbase.coprocessor.RegionServerObserver;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.ipc.RpcServer;
-import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.quotas.GlobalQuotaSettings;
 import org.apache.hadoop.hbase.regionserver.FlushLifeCycleTracker;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
@@ -68,6 +63,7 @@ import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionLifeCycleTracker;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -75,10 +71,15 @@ import org.apache.hadoop.hbase.security.access.AccessChecker;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.UserPermission;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.hadoop.security.AccessControlException;
+import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
+import org.apache.hbase.thirdparty.com.google.protobuf.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tech.stackable.hbase.opa.OpType;
@@ -179,7 +180,9 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preModifyNamespace(
-      ObserverContext<MasterCoprocessorEnvironment> ctx, NamespaceDescriptor ns)
+      ObserverContext<MasterCoprocessorEnvironment> ctx,
+      NamespaceDescriptor currentDesc,
+      NamespaceDescriptor newNesc)
       throws IOException {
     final User user = getActiveUser(ctx);
     LOG.debug("preModifyNamespace: user [{}]", user);
@@ -262,7 +265,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preGetOp(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final Get get,
       final List<Cell> result)
       throws IOException {
@@ -279,7 +282,9 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preExists(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx, final Get get, final boolean exists)
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
+      final Get get,
+      final boolean exists)
       throws IOException {
     final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
@@ -295,7 +300,8 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preScannerOpen(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx, final Scan scan) throws IOException {
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx, final Scan scan)
+      throws IOException {
     final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
     // All users need read access to hbase:meta table.
@@ -309,7 +315,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public RegionScanner postScannerOpen(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final Scan scan,
       final RegionScanner s)
       throws IOException {
@@ -326,7 +332,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preScannerNext(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final InternalScanner s,
       final List<Result> result,
       final int limit,
@@ -342,7 +348,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preScannerClose(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx, final InternalScanner s)
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx, final InternalScanner s)
       throws IOException {
     final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
@@ -353,7 +359,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void postScannerClose(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx, final InternalScanner s)
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx, final InternalScanner s)
       throws IOException {
     final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
@@ -376,7 +382,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void prePut(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final Put put,
       final WALEdit edit,
       final Durability durability)
@@ -390,7 +396,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preDelete(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final Delete delete,
       final WALEdit edit,
       final Durability durability)
@@ -404,7 +410,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void postDelete(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final Delete delete,
       final WALEdit edit,
       final Durability durability) {
@@ -412,7 +418,8 @@ public class OpenPolicyAgentAccessController
   }
 
   @Override
-  public Result preAppend(ObserverContext<RegionCoprocessorEnvironment> ctx, Append append)
+  public Result preAppend(
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx, Append append)
       throws IOException {
     final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
@@ -426,7 +433,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preBatchMutate(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       MiniBatchOperationInProgress<Mutation> miniBatchOp)
       throws IOException {
     final User user = getActiveUser(ctx);
@@ -441,7 +448,8 @@ public class OpenPolicyAgentAccessController
   }
 
   @Override
-  public void preOpen(ObserverContext<RegionCoprocessorEnvironment> ctx) throws IOException {
+  public void preOpen(ObserverContext<? extends RegionCoprocessorEnvironment> ctx)
+      throws IOException {
     final User user = getActiveUser(ctx);
     final Region region = ctx.getEnvironment().getRegion();
     if (region == null) {
@@ -454,7 +462,7 @@ public class OpenPolicyAgentAccessController
   }
 
   @Override
-  public void postOpen(ObserverContext<RegionCoprocessorEnvironment> ctx) {
+  public void postOpen(ObserverContext<? extends RegionCoprocessorEnvironment> ctx) {
     // not needed as the ACL table is not used
   }
 
@@ -469,14 +477,14 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preFlush(
-      ObserverContext<RegionCoprocessorEnvironment> ctx, FlushLifeCycleTracker tracker)
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx, FlushLifeCycleTracker tracker)
       throws IOException {
     // Internal storage engine flush — not a user-initiated operation, no authorization needed.
   }
 
   @Override
   public InternalScanner preCompact(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       Store store,
       InternalScanner scanner,
       ScanType scanType,
@@ -564,7 +572,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndPut(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final byte[] family,
       final byte[] qualifier,
@@ -583,7 +591,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndPutAfterRowLock(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final byte[] family,
       final byte[] qualifier,
@@ -603,7 +611,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndDelete(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final byte[] family,
       final byte[] qualifier,
@@ -630,7 +638,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndDeleteAfterRowLock(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final byte[] family,
       final byte[] qualifier,
@@ -660,7 +668,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndPut(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final Filter filter,
       final Put put,
@@ -676,7 +684,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndPutAfterRowLock(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final Filter filter,
       final Put put,
@@ -693,7 +701,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndDelete(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final Filter filter,
       final Delete delete,
@@ -717,7 +725,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public boolean preCheckAndDeleteAfterRowLock(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       final byte[] row,
       final Filter filter,
       final Delete delete,
@@ -744,7 +752,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public CheckAndMutateResult preCheckAndMutate(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       CheckAndMutate checkAndMutate,
       CheckAndMutateResult result)
       throws IOException {
@@ -760,7 +768,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public CheckAndMutateResult preCheckAndMutateAfterRowLock(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       CheckAndMutate checkAndMutate,
       CheckAndMutateResult result)
       throws IOException {
@@ -815,7 +823,8 @@ public class OpenPolicyAgentAccessController
   public void postModifyTable(
       ObserverContext<MasterCoprocessorEnvironment> ctx,
       TableName tableName,
-      final TableDescriptor htd)
+      final TableDescriptor currentDesc,
+      final TableDescriptor newDesc)
       throws IOException {
     final User user = getActiveUser(ctx);
     LOG.trace("postModifyTable: user [{}] on table [{}]", user, tableName);
@@ -823,7 +832,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public Result preIncrement(
-      final ObserverContext<RegionCoprocessorEnvironment> ctx, final Increment increment)
+      final ObserverContext<? extends RegionCoprocessorEnvironment> ctx, final Increment increment)
       throws IOException {
     final User user = getActiveUser(ctx);
     TableName tableName = ctx.getEnvironment().getRegionInfo().getTable();
@@ -840,7 +849,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public List<Pair<Cell, Cell>> postIncrementBeforeWAL(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       Mutation mutation,
       List<Pair<Cell, Cell>> cellPairs) {
     // we have no ACL table so return as per the similar case in the default controller
@@ -849,7 +858,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public List<Pair<Cell, Cell>> postAppendBeforeWAL(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       Mutation mutation,
       List<Pair<Cell, Cell>> cellPairs) {
     // we have no ACL table so return as per the similar case in the default controller
@@ -1046,7 +1055,8 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void preBulkLoadHFile(
-      ObserverContext<RegionCoprocessorEnvironment> ctx, List<Pair<byte[], String>> familyPaths)
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
+      List<Pair<byte[], String>> familyPaths)
       throws IOException {
     final User user = getActiveUser(ctx);
     final var tableName = ctx.getEnvironment().getRegion().getTableDescriptor().getTableName();
@@ -1328,7 +1338,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public Message preEndpointInvocation(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       Service service,
       String methodName,
       Message request)
@@ -1360,7 +1370,7 @@ public class OpenPolicyAgentAccessController
 
   @Override
   public void postEndpointInvocation(
-      ObserverContext<RegionCoprocessorEnvironment> ctx,
+      ObserverContext<? extends RegionCoprocessorEnvironment> ctx,
       Service service,
       String methodName,
       Message request,
@@ -1539,6 +1549,19 @@ public class OpenPolicyAgentAccessController
       final ObserverContext<MasterCoprocessorEnvironment> ctx, String regex) throws IOException {
     requirePermission(
         ctx, NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR, "listReplicationPeers", Action.ADMIN);
+  }
+
+  @Override
+  public void preTransitReplicationPeerSyncReplicationState(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId,
+      SyncReplicationState state)
+      throws IOException {
+    requirePermission(
+        ctx,
+        NamespaceDescriptor.DEFAULT_NAMESPACE_NAME_STR,
+        "transitSyncReplicationPeerState",
+        Action.ADMIN);
   }
 
   @Override

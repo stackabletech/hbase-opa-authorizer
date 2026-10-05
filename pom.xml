@@ -5,7 +5,7 @@
 
   <groupId>tech.stackable</groupId>
   <artifactId>hbase-opa-authorizer</artifactId>
-  <version>0.3.0</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
 
   <name>Apache Hadoop HBase OPA Authorizer</name>
@@ -31,7 +31,7 @@
   </issueManagement>
 
   <properties>
-    <java.version>11</java.version>
+    <java.version>17</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -52,11 +52,25 @@
     <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
     <spotless-maven-plugin.version>2.44.5</spotless-maven-plugin.version>
 
-    <hbase.version>2.6.4</hbase.version>
-    <hbase.protobuf.version>2.5.0</hbase.protobuf.version>
+    <hbase.version>3.0.0</hbase.version>
+    <hbase-thirdparty.version>4.1.14</hbase-thirdparty.version>
     <caffeine.version>3.2.0</caffeine.version>
-    <opa.version>1.12.3</opa.version>
+    <opa.version>1.20.2</opa.version>
+
+    <junit.version>5.13.4</junit.version>
   </properties>
+
+  <dependencyManagement>
+      <dependencies>
+        <dependency>
+          <groupId>org.junit</groupId>
+          <artifactId>junit-bom</artifactId>
+          <version>${junit.version}</version>
+          <type>pom</type>
+          <scope>import</scope>
+        </dependency>
+      </dependencies>
+    </dependencyManagement>
 
   <dependencies>
     <dependency>
@@ -65,9 +79,9 @@
       <version>${caffeine.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>${hbase.protobuf.version}</version>
+      <groupId>org.apache.hbase.thirdparty</groupId>
+      <artifactId>hbase-shaded-protobuf</artifactId>
+      <version>${hbase-thirdparty.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -123,13 +137,18 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.12.7.1</version>
+      <!-- provided by HBase at runtime: keep in line with the HBase version (HBase 3.0.0: 2.21.1) -->
+      <version>2.21.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.2</version>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -271,6 +290,29 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <!-- Same JVM flags HBase 3.0.0 uses for its own tests (hbase-surefire.jdk17.flags) -->
+          <argLine>
+            -Dorg.apache.hbase.thirdparty.io.netty.tryReflectionSetAccessible=true
+            --add-modules jdk.unsupported
+            --add-opens java.base/java.io=ALL-UNNAMED
+            --add-opens java.base/java.nio=ALL-UNNAMED
+            --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+            --add-opens java.base/java.lang=ALL-UNNAMED
+            --add-opens java.base/jdk.internal.ref=ALL-UNNAMED
+            --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+            --add-opens java.base/java.util=ALL-UNNAMED
+            --add-opens java.base/java.util.concurrent=ALL-UNNAMED
+            --add-exports java.base/jdk.internal.misc=ALL-UNNAMED
+            --add-exports java.security.jgss/sun.security.krb5=ALL-UNNAMED
+            --add-exports java.base/sun.net.dns=ALL-UNNAMED
+            --add-exports java.base/sun.net.util=ALL-UNNAMED
+            --add-opens java.base/jdk.internal.util.random=ALL-UNNAMED
+            --add-opens java.base/sun.security.x509=ALL-UNNAMED
+            --add-opens java.base/sun.security.util=ALL-UNNAMED
+            --add-opens java.base/java.net=ALL-UNNAMED
+          </argLine>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>com.googlecode.maven-download-plugin</groupId>
