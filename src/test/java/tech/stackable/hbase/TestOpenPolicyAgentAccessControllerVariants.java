@@ -4,19 +4,20 @@ import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static org.junit.Assert.assertEquals;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import java.util.Optional;
-import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.coprocessor.ObserverContextImpl;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.security.AccessControlException;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 /**
  * Tests for non-default coprocessor configurations (dryRun, cache). Each test manages its own
@@ -25,14 +26,12 @@ import org.junit.Test;
 public class TestOpenPolicyAgentAccessControllerVariants extends TestUtils {
   public static final String OPA_URL = "http://localhost:8089";
 
-  // @Rule (not @ClassRule) because each test starts and tears down its own mini-cluster
-  // (setup/tearDown are called inside the test body, not in @BeforeClass/@AfterClass).
-  @Rule public WireMockRule wireMockRule = new WireMockRule(8089);
-
-  @Before
-  public void registerOpaListener() {
-    wireMockRule.addMockServiceRequestListener(OpaFixtureWriter::capture);
-  }
+  @RegisterExtension
+  WireMockExtension wireMockExtension =
+      WireMockExtension.newInstance()
+          .options(wireMockConfig().port(8089).extensions(new OpaFixtureCapture()))
+          .configureStaticDsl(true)
+          .build();
 
   @Test
   public void testDryRun() throws Exception {
@@ -43,9 +42,8 @@ public class TestOpenPolicyAgentAccessControllerVariants extends TestUtils {
 
     SecureTestUtil.AccessTestAction createTable =
         () -> {
-          HTableDescriptor htd = getHTableDescriptor();
-          getOpaController()
-              .preCreateTable(ObserverContextImpl.createAndPrepare(CP_ENV), htd, null);
+          TableDescriptor td = getTableDescriptor();
+          getOpaController().preCreateTable(ObserverContextImpl.createAndPrepare(CP_ENV), td, null);
           return null;
         };
 
@@ -61,8 +59,6 @@ public class TestOpenPolicyAgentAccessControllerVariants extends TestUtils {
     } catch (AccessControlException e) {
       throw new AssertionError("AccessControlException should not have been thrown", e);
     }
-
-    tearDown();
   }
 
   @Test
@@ -74,9 +70,8 @@ public class TestOpenPolicyAgentAccessControllerVariants extends TestUtils {
 
     SecureTestUtil.AccessTestAction createTable =
         () -> {
-          HTableDescriptor htd = getHTableDescriptor();
-          getOpaController()
-              .preCreateTable(ObserverContextImpl.createAndPrepare(CP_ENV), htd, null);
+          TableDescriptor td = getTableDescriptor();
+          getOpaController().preCreateTable(ObserverContextImpl.createAndPrepare(CP_ENV), td, null);
           return null;
         };
 
@@ -87,7 +82,12 @@ public class TestOpenPolicyAgentAccessControllerVariants extends TestUtils {
     }
 
     assertEquals(Optional.of(1L), getOpaController().getAclCacheSize());
+  }
 
+  // Each test starts its own mini-cluster in its body; shut it down here so that a failure in
+  // setup() or in the test itself does not leave the cluster running for the next test class.
+  @AfterEach
+  public void shutDownMiniCluster() throws Exception {
     tearDown();
   }
 

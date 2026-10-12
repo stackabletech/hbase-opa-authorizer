@@ -4,15 +4,15 @@ import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.createTable;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.deleteTable;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.BalanceRequest;
@@ -28,35 +28,40 @@ import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.ObserverContextImpl;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.quotas.GlobalQuotaSettings;
+import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.security.AccessControlException;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class TestOpenPolicyAgentAccessController extends TestUtils {
   public static final String OPA_URL = "http://localhost:8089";
 
-  @ClassRule public static WireMockRule wireMockRule = new WireMockRule(8089);
+  @RegisterExtension
+  static WireMockExtension wireMockExtension =
+      WireMockExtension.newInstance()
+          .options(wireMockConfig().port(8089).extensions(new OpaFixtureCapture()))
+          .configureStaticDsl(true)
+          .build();
 
-  @BeforeClass
+  @BeforeAll
   public static void setUpClass() throws Exception {
-    wireMockRule.addMockServiceRequestListener(OpaFixtureWriter::capture);
     stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
     setup(OpenPolicyAgentAccessController.class, false, OPA_URL);
   }
 
-  @Before
+  @BeforeEach
   public void resetStubs() {
     WireMock.reset();
     stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
   }
 
-  @AfterClass
+  @AfterAll
   public static void tearDownClass() throws Exception {
     tearDown();
   }
@@ -79,8 +84,8 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
   public void testCreateAndPut() throws Exception {
     LOG.info("testCreateAndPut - start");
 
-    HTableDescriptor htd = getHTableDescriptor();
-    createTable(TEST_UTIL, TEST_UTIL.getAdmin(), htd, new byte[][] {Bytes.toBytes("s")});
+    TableDescriptor td = getTableDescriptor();
+    createTable(TEST_UTIL, TEST_UTIL.getAdmin(), td, new byte[][] {Bytes.toBytes("s")});
 
     List<Put> puts = new ArrayList<>(100);
     for (int i = 0; i < 100; i++) {
@@ -88,7 +93,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
       p.addColumn(TEST_FAMILY, Bytes.toBytes("myCol"), Bytes.toBytes("info " + i));
       puts.add(p);
     }
-    Table table = TEST_UTIL.getConnection().getTable(htd.getTableName());
+    Table table = TEST_UTIL.getConnection().getTable(td.getTableName());
     table.put(puts);
 
     deleteTable(TEST_UTIL, TEST_TABLE);
@@ -100,8 +105,8 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
     LOG.info("testDeniedCreate - start");
     try {
       stubFor(post("/").willReturn(ok().withBody("{\"result\": \"false\"}")));
-      HTableDescriptor htd = getHTableDescriptor();
-      createTable(TEST_UTIL, TEST_UTIL.getAdmin(), htd, new byte[][] {Bytes.toBytes("s")});
+      TableDescriptor td = getTableDescriptor();
+      createTable(TEST_UTIL, TEST_UTIL.getAdmin(), td, new byte[][] {Bytes.toBytes("s")});
       fail("AccessControlException should have been thrown");
     } catch (AccessControlException e) {
       logOk(e);
@@ -114,7 +119,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
     User userDenied = User.createUserForTesting(conf, "cannotCreateTables", new String[0]);
     SecureTestUtil.AccessTestAction createTable =
         () -> {
-          getOpaController().preCreateTable(ctx(), getHTableDescriptor(), null);
+          getOpaController().preCreateTable(ctx(), getTableDescriptor(), null);
           return null;
         };
     stubFor(
@@ -173,7 +178,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
     NamespaceDescriptor nsd = NamespaceDescriptor.create("default").build();
     assertAllowedThenDenied(
         () -> {
-          getOpaController().preModifyNamespace(ctx(), nsd);
+          getOpaController().preModifyNamespace(ctx(), nsd, nsd);
           return null;
         });
   }
@@ -227,7 +232,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
 
   @Test
   public void testPreModifyTable() throws Exception {
-    TableDescriptor td = getHTableDescriptor();
+    TableDescriptor td = getTableDescriptor();
     assertAllowedThenDenied(
         () -> {
           getOpaController().preModifyTable(ctx(), TEST_TABLE, td, td);
@@ -350,7 +355,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
   @Test
   public void testPreSnapshot() throws Exception {
     SnapshotDescription snap = new SnapshotDescription("snap", TEST_TABLE);
-    TableDescriptor td = getHTableDescriptor();
+    TableDescriptor td = getTableDescriptor();
     assertAllowedThenDenied(
         () -> {
           getOpaController().preSnapshot(ctx(), snap, td);
@@ -371,7 +376,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
   @Test
   public void testPreCloneSnapshot() throws Exception {
     SnapshotDescription snap = new SnapshotDescription("snap", TEST_TABLE);
-    TableDescriptor td = getHTableDescriptor();
+    TableDescriptor td = getTableDescriptor();
     assertAllowedThenDenied(
         () -> {
           getOpaController().preCloneSnapshot(ctx(), snap, td);
@@ -382,7 +387,7 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
   @Test
   public void testPreRestoreSnapshot() throws Exception {
     SnapshotDescription snap = new SnapshotDescription("snap", TEST_TABLE);
-    TableDescriptor td = getHTableDescriptor();
+    TableDescriptor td = getTableDescriptor();
     assertAllowedThenDenied(
         () -> {
           getOpaController().preRestoreSnapshot(ctx(), snap, td);
@@ -672,6 +677,17 @@ public class TestOpenPolicyAgentAccessController extends TestUtils {
     assertAllowedThenDenied(
         () -> {
           getOpaController().preListReplicationPeers(ctx(), ".*");
+          return null;
+        });
+  }
+
+  @Test
+  public void testPreTransitReplicationPeerSyncReplicationState() throws Exception {
+    assertAllowedThenDenied(
+        () -> {
+          getOpaController()
+              .preTransitReplicationPeerSyncReplicationState(
+                  ctx(), "peer1", SyncReplicationState.ACTIVE);
           return null;
         });
   }

@@ -3,11 +3,12 @@ package tech.stackable.hbase;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.createTable;
 import static org.apache.hadoop.hbase.security.access.SecureTestUtil.deleteTable;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import java.util.Collections;
 import org.apache.hadoop.hbase.CompareOperator;
 import org.apache.hadoop.hbase.Coprocessor;
@@ -32,11 +33,11 @@ import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionServerCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
   public static final String OPA_URL = "http://localhost:8089";
@@ -45,16 +46,20 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
   private static RegionCoprocessorEnvironment REGION_CP_ENV;
   private static RegionServerCoprocessorEnvironment RS_CP_ENV;
 
-  @ClassRule public static WireMockRule wireMockRule = new WireMockRule(8089);
+  @RegisterExtension
+  static WireMockExtension wireMockExtension =
+      WireMockExtension.newInstance()
+          .options(wireMockConfig().port(8089).extensions(new OpaFixtureCapture()))
+          .configureStaticDsl(true)
+          .build();
 
-  @BeforeClass
+  @BeforeAll
   public static void setUpClass() throws Exception {
-    wireMockRule.addMockServiceRequestListener(OpaFixtureWriter::capture);
     stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
     setup(OpenPolicyAgentAccessController.class, false, OPA_URL);
 
     createTable(
-        TEST_UTIL, TEST_UTIL.getAdmin(), getHTableDescriptor(), new byte[][] {Bytes.toBytes("s")});
+        TEST_UTIL, TEST_UTIL.getAdmin(), getTableDescriptor(), new byte[][] {Bytes.toBytes("s")});
 
     HRegion region = TEST_UTIL.getHBaseCluster().getRegions(TEST_TABLE).get(0);
     RegionCoprocessorHost rcpHost = region.getCoprocessorHost();
@@ -73,13 +78,13 @@ public class TestOpenPolicyAgentAccessControllerRegion extends TestUtils {
             rsCpHost.createEnvironment(rsController, Coprocessor.PRIORITY_HIGHEST, 1, conf);
   }
 
-  @Before
+  @BeforeEach
   public void resetStubs() {
     WireMock.reset();
     stubFor(post("/").willReturn(ok().withBody("{\"result\": \"true\"}")));
   }
 
-  @AfterClass
+  @AfterAll
   public static void tearDownClass() throws Exception {
     deleteTable(TEST_UTIL, TEST_TABLE);
     tearDown();
