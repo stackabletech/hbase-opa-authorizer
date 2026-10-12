@@ -182,7 +182,7 @@ public class OpenPolicyAgentAccessController
   public void preModifyNamespace(
       ObserverContext<MasterCoprocessorEnvironment> ctx,
       NamespaceDescriptor currentDesc,
-      NamespaceDescriptor newNesc)
+      NamespaceDescriptor newDesc)
       throws IOException {
     final User user = getActiveUser(ctx);
     LOG.debug("preModifyNamespace: user [{}]", user);
